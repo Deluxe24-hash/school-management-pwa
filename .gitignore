@@ -1,7 +1,6 @@
 node_modules/
-dist/
-build/
-.next/
 .env
-.env.local
+dist/
+.next/
+build/
 *.log
