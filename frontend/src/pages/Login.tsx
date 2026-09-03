@@ -41,10 +41,10 @@ export const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 bg-primary-600 rounded-2xl flex items-center justify-center mb-4 shadow-sm">
-            <GraduationCap className="w-8 h-8 text-white" />
+          <div className="w-14 h-14 bg-primary-900 rounded-md flex items-center justify-center mb-4 border border-primary-800">
+            <GraduationCap className="w-7 h-7 text-gold-400" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back</h1>
+          <h1 className="text-2xl font-serif font-semibold text-primary-900 dark:text-white">Welcome back</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Sign in to your school management portal
           </p>

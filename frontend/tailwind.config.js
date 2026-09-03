@@ -5,18 +5,19 @@ export default {
   theme: {
     extend: {
       colors: {
+        // "Ink" — deep navy-indigo, the institutional/authority color
         primary: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-          800: "#1e40af",
-          900: "#1e3a8a",
-          950: "#172554",
+          50: "#eef1f7",
+          100: "#dbe2ee",
+          200: "#b3c0da",
+          300: "#8394bd",
+          400: "#5a6d9d",
+          500: "#3d4f7d",
+          600: "#2b3b60",
+          700: "#22304e",
+          800: "#1b2640",
+          900: "#141c30",
+          950: "#0c1220",
         },
         secondary: {
           50: "#f8fafc",
@@ -31,9 +32,25 @@ export default {
           900: "#0f172a",
           950: "#020617",
         },
+        // "Ledger gold" — the single reserved accent: active nav, key highlights only
+        gold: {
+          50: "#faf5e9",
+          100: "#f3e6c4",
+          200: "#e6cc8c",
+          300: "#d3ab53",
+          400: "#c0912f",
+          500: "#a67a24",
+          600: "#8a651e",
+          700: "#6d4f18",
+        },
+        paper: {
+          DEFAULT: "#f7f5ef",
+          dark: "#0f1420",
+        },
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        serif: ["\"Source Serif 4\"", "Georgia", "serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.3s ease-in-out",

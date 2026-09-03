@@ -31,28 +31,28 @@ export const Sidebar = () => {
   );
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col h-full bg-primary-900 text-white">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
         {!sidebarCollapsed && (
-          <div className="flex items-center gap-2">
-            <SchoolIcon className="w-8 h-8 text-primary-600" />
-            <span className="font-bold text-lg text-gray-900 dark:text-white">SchoolPortal</span>
+          <div className="flex items-center gap-2.5">
+            <SchoolIcon className="w-7 h-7 text-gold-400" />
+            <span className="font-serif font-semibold text-lg tracking-tight">Ledger</span>
           </div>
         )}
-        {sidebarCollapsed && <SchoolIcon className="w-8 h-8 text-primary-600 mx-auto" />}
+        {sidebarCollapsed && <SchoolIcon className="w-7 h-7 text-gold-400 mx-auto" />}
         <button
           onClick={toggleSidebar}
-          className="hidden lg:flex p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          className="hidden lg:flex p-1 rounded-md hover:bg-white/10 text-primary-200"
         >
           {sidebarCollapsed ? (
-            <ChevronRight className="w-5 h-5 text-gray-500" />
+            <ChevronRight className="w-5 h-5" />
           ) : (
-            <ChevronLeft className="w-5 h-5 text-gray-500" />
+            <ChevronLeft className="w-5 h-5" />
           )}
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
         {filteredMenu.map((item) => (
           <NavLink
             key={item.path}
@@ -68,8 +68,8 @@ export const Sidebar = () => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-        {!sidebarCollapsed && <p className="text-xs text-gray-400 text-center">v1.0.0</p>}
+      <div className="p-4 border-t border-white/10">
+        {!sidebarCollapsed && <p className="text-xs text-primary-300 text-center">v1.0.0</p>}
       </div>
     </div>
   );

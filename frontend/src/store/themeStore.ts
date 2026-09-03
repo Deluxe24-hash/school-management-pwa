@@ -3,10 +3,13 @@ import { persist } from "zustand/middleware";
 
 interface ThemeState {
   isDarkMode: boolean;
-  sidebarCollapsed: boolean;
+  sidebarCollapsed: boolean; // desktop: collapsed to icon rail
+  mobileNavOpen: boolean; // mobile: slide-in drawer open/closed
   toggleDarkMode: () => void;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleMobileNav: () => void;
+  setMobileNavOpen: (open: boolean) => void;
 }
 
 export const useThemeStore = create<ThemeState>()(
@@ -14,6 +17,7 @@ export const useThemeStore = create<ThemeState>()(
     (set) => ({
       isDarkMode: false,
       sidebarCollapsed: false,
+      mobileNavOpen: false,
 
       toggleDarkMode: () => {
         set((state) => {
@@ -29,9 +33,12 @@ export const useThemeStore = create<ThemeState>()(
 
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+      toggleMobileNav: () => set((state) => ({ mobileNavOpen: !state.mobileNavOpen })),
+      setMobileNavOpen: (open) => set({ mobileNavOpen: open }),
     }),
     {
       name: "theme-storage",
+      // mobileNavOpen is intentionally excluded — a drawer should never persist open across reloads
       partialize: (state) => ({ isDarkMode: state.isDarkMode, sidebarCollapsed: state.sidebarCollapsed }),
     }
   )

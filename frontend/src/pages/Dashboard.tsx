@@ -53,12 +53,12 @@ export const Dashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 className="text-2xl sm:text-3xl font-serif font-semibold text-primary-900 dark:text-white">
           Welcome back, <span className="capitalize">{greetingName}</span>
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">
           {stats?.currentSession?.name
-            ? `${stats.currentSession.name}${currentTerm ? ` · ${currentTerm}` : ""}`
+            ? `${stats.currentSession.name}${currentTerm ? `, ${currentTerm}` : ""}`
             : "Here's what's happening at your school today."}
         </p>
       </div>

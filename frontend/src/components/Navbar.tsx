@@ -6,7 +6,7 @@ import { getInitials } from "../utils/helpers";
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
-  const { setSidebarCollapsed } = useTheme();
+  const { toggleMobileNav } = useTheme();
 
   const firstName = user?.student?.firstName || user?.teacher?.firstName || user?.staff?.firstName || "User";
   const lastName = user?.student?.lastName || user?.teacher?.lastName || user?.staff?.lastName || "";
@@ -15,12 +15,13 @@ export const Navbar = () => {
     <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20">
       <div className="flex items-center gap-4">
         <button
-          onClick={() => setSidebarCollapsed(false)}
+          onClick={toggleMobileNav}
           className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          aria-label="Open menu"
         >
           <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-800 dark:text-white hidden sm:block">
+        <h1 className="text-lg font-serif font-semibold text-primary-900 dark:text-white hidden sm:block">
           School Management Portal
         </h1>
       </div>
