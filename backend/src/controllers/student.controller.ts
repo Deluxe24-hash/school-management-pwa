@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { successResponse, errorResponse } from "../utils/response";
 import { logAudit } from "../services/audit.service";
@@ -133,8 +134,8 @@ export const createStudent = async (req: Request, res: Response) => {
         medicalInfo: data.medicalInfo,
         previousSchool: data.previousSchool,
         parentId: data.parentId,
-        ...(userId ? { userId } : {}),
-      },
+        userId: userId,
+      } satisfies Prisma.StudentUncheckedCreateInput,
       include: { user: true, parent: true },
     });
 
