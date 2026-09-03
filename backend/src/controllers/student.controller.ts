@@ -135,12 +135,13 @@ export const createStudent = async (req: Request, res: Response) => {
         previousSchool: data.previousSchool,
         parentId: data.parentId,
         userId: userId,
-      } satisfies Prisma.StudentUncheckedCreateInput,
+      } as Prisma.StudentUncheckedCreateInput,
       include: { user: true, parent: true },
     });
 
     // Auto-enroll if classArmId provided
-    if (data.classArmId) {
+    const classArmId = data.classArmId;
+    if (classArmId) {
       const currentSession = await prisma.academicSession.findFirst({
         where: { isCurrent: true },
       });
@@ -148,7 +149,7 @@ export const createStudent = async (req: Request, res: Response) => {
         await prisma.studentEnrollment.create({
           data: {
             studentId: student.id,
-            classArmId: data.classArmId,
+            classArmId: classArmId,
             sessionId: currentSession.id,
           },
         });
