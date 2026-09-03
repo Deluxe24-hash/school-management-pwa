@@ -133,7 +133,7 @@ export const createStudent = async (req: Request, res: Response) => {
         medicalInfo: data.medicalInfo,
         previousSchool: data.previousSchool,
         parentId: data.parentId,
-        userId,
+        ...(userId ? { userId } : {}),
       },
       include: { user: true, parent: true },
     });

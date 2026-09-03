@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import { UserRole } from "@prisma/client";
 import { errorResponse } from "../utils/response";
 
+export { authenticate } from "./auth";
+
 export const authorize = (...roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {

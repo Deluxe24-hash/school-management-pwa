@@ -23,6 +23,12 @@ export const authenticate = async (
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
+      include: {
+        student: true,
+        teacher: true,
+        parent: true,
+        staff: true,
+      },
     });
 
     if (!user || user.status !== "ACTIVE") {
