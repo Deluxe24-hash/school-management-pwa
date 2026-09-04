@@ -63,9 +63,23 @@ export const markAttendance = async (req: Request, res: Response) => {
     const { records } = req.body; // Array of { studentId, status, remark }
     const { classArmId, date, sessionId, termId } = req.body;
 
-    const teacherId = req.user!.teacher?.id;
-    if (!teacherId && req.user!.role !== "ADMIN" && req.user!.role !== "SUPER_ADMIN") {
-      return errorResponse(res, "Only teachers can mark attendance", 403);
+    let teacherId = req.user!.teacher?.id;
+
+    if (!teacherId) {
+      if (req.user!.role !== "ADMIN" && req.user!.role !== "SUPER_ADMIN" && req.user!.role !== "PRINCIPAL") {
+        return errorResponse(res, "Only teachers can mark attendance", 403);
+      }
+      // Admins without their own teacher profile mark attendance on behalf of
+      // the class's homeroom teacher, since attendance.teacherId must reference a real Teacher row.
+      const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
+      teacherId = classArm?.classTeacherId ?? undefined;
+      if (!teacherId) {
+        const anyTeacher = await prisma.teacher.findFirst();
+        teacherId = anyTeacher?.id;
+      }
+      if (!teacherId) {
+        return errorResponse(res, "No teacher is assigned to this class yet, and no teacher records exist to attribute this to. Add a teacher first, or set a class teacher for this class.", 422);
+      }
     }
 
     const attendanceDate = new Date(date);
@@ -84,7 +98,7 @@ export const markAttendance = async (req: Request, res: Response) => {
           update: {
             status: record.status,
             remark: record.remark,
-            teacherId: teacherId || req.user!.id,
+            teacherId: teacherId!,
           },
           create: {
             date: attendanceDate,
@@ -92,7 +106,7 @@ export const markAttendance = async (req: Request, res: Response) => {
             remark: record.remark,
             studentId: record.studentId,
             classArmId,
-            teacherId: teacherId || req.user!.id,
+            teacherId: teacherId!,
             sessionId,
             termId,
           },

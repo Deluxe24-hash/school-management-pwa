@@ -89,7 +89,22 @@ export const enterResult = async (req: Request, res: Response) => {
       gradePoint = gradeInfo.gradePoint;
     }
 
-    const teacherId = req.user!.teacher?.id || req.user!.id;
+    let teacherId = req.user!.teacher?.id;
+    if (!teacherId) {
+      const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
+      teacherId = classArm?.classTeacherId ?? undefined;
+      if (!teacherId) {
+        const subjectTeacher = await prisma.classSubject.findFirst({ where: { classId: classArm?.classId, subjectId } });
+        teacherId = subjectTeacher?.teacherId ?? undefined;
+      }
+      if (!teacherId) {
+        const anyTeacher = await prisma.teacher.findFirst();
+        teacherId = anyTeacher?.id;
+      }
+      if (!teacherId) {
+        return errorResponse(res, "No teacher is assigned to this class/subject yet, and no teacher records exist to attribute this to. Add a teacher first.", 422);
+      }
+    }
 
     const result = await prisma.result.upsert({
       where: {

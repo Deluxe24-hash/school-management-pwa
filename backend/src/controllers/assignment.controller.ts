@@ -52,10 +52,21 @@ export const getAssignment = async (req: Request, res: Response) => {
 export const createAssignment = async (req: Request, res: Response) => {
   try {
     const { title, description, instructions, type, maxScore, dueDate, attachmentUrl, subjectId, classArmId, sessionId, termId } = req.body;
-    const teacherId = req.user!.teacher?.id;
+    let teacherId = req.user!.teacher?.id;
 
-    if (!teacherId && req.user!.role !== "ADMIN" && req.user!.role !== "SUPER_ADMIN") {
-      return errorResponse(res, "Only teachers can create assignments", 403);
+    if (!teacherId) {
+      if (req.user!.role !== "ADMIN" && req.user!.role !== "SUPER_ADMIN" && req.user!.role !== "PRINCIPAL") {
+        return errorResponse(res, "Only teachers can create assignments", 403);
+      }
+      const subjectTeacher = await prisma.classSubject.findFirst({ where: { subjectId, class: { arms: { some: { id: classArmId } } } } });
+      teacherId = subjectTeacher?.teacherId ?? undefined;
+      if (!teacherId) {
+        const anyTeacher = await prisma.teacher.findFirst();
+        teacherId = anyTeacher?.id;
+      }
+      if (!teacherId) {
+        return errorResponse(res, "No teacher is assigned to this subject yet, and no teacher records exist to attribute this to. Add a teacher first.", 422);
+      }
     }
 
     const assignment = await prisma.assignment.create({
@@ -63,7 +74,7 @@ export const createAssignment = async (req: Request, res: Response) => {
         title, description, instructions, type, maxScore,
         dueDate: new Date(dueDate),
         attachmentUrl,
-        teacherId: teacherId || req.user!.id,
+        teacherId,
         subjectId,
         classArmId,
         sessionId,
