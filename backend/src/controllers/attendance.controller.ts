@@ -63,15 +63,22 @@ export const markAttendance = async (req: Request, res: Response) => {
     const { records } = req.body; // Array of { studentId, status, remark }
     const { classArmId, date, sessionId, termId } = req.body;
 
-    let teacherId = req.user!.teacher?.id;
+    const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
+    const requesterTeacherId = req.user!.teacher?.id;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(req.user!.role);
 
+    // Only the class's form (homeroom) teacher may mark attendance — subject teachers cannot.
+    if (requesterTeacherId && !isAdminTier && classArm?.classTeacherId !== requesterTeacherId) {
+      return errorResponse(res, "Only this class's form teacher can mark attendance.", 403);
+    }
+    if (!requesterTeacherId && !isAdminTier) {
+      return errorResponse(res, "Only teachers can mark attendance", 403);
+    }
+
+    let teacherId = requesterTeacherId;
     if (!teacherId) {
-      if (req.user!.role !== "ADMIN" && req.user!.role !== "SUPER_ADMIN" && req.user!.role !== "PRINCIPAL") {
-        return errorResponse(res, "Only teachers can mark attendance", 403);
-      }
-      // Admins without their own teacher profile mark attendance on behalf of
-      // the class's homeroom teacher, since attendance.teacherId must reference a real Teacher row.
-      const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
+      // Admin without their own teacher profile marks on behalf of the form teacher,
+      // since attendance.teacherId must reference a real Teacher row.
       teacherId = classArm?.classTeacherId ?? undefined;
       if (!teacherId) {
         const anyTeacher = await prisma.teacher.findFirst();

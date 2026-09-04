@@ -61,7 +61,24 @@ export const getStudentResults = async (req: Request, res: Response) => {
 
 export const enterResult = async (req: Request, res: Response) => {
   try {
-    const { studentId, subjectId, classArmId, sessionId, termId, caScore, examScore } = req.body;
+    const { studentId, subjectId, classArmId, sessionId, termId, ca1Score, ca2Score, projectScore, examScore } = req.body;
+
+    const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
+
+    // A subject teacher may only enter scores for a class+subject they're actually assigned to.
+    // Admin-tier roles and the class's form teacher can enter for any subject in their class.
+    const requesterTeacherId = req.user!.teacher?.id;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER"].includes(req.user!.role);
+    const isFormTeacher = requesterTeacherId && classArm?.classTeacherId === requesterTeacherId;
+
+    if (requesterTeacherId && !isAdminTier && !isFormTeacher) {
+      const assigned = await prisma.classSubject.findFirst({
+        where: { classId: classArm?.classId, subjectId, teacherId: requesterTeacherId },
+      });
+      if (!assigned) {
+        return errorResponse(res, "You're not assigned to teach this subject for this class.", 403);
+      }
+    }
 
     const existing = await prisma.result.findUnique({
       where: {
@@ -79,7 +96,13 @@ export const enterResult = async (req: Request, res: Response) => {
     const caWeight = settings?.caWeight || 40;
     const examWeight = settings?.examWeight || 60;
 
-    const totalScore = ((caScore || 0) * caWeight / 100) + ((examScore || 0) * examWeight / 100);
+    const resolvedCa1 = ca1Score ?? existing?.ca1Score ?? 0;
+    const resolvedCa2 = ca2Score ?? existing?.ca2Score ?? 0;
+    const resolvedProject = projectScore ?? existing?.projectScore ?? 0;
+    const caScore = resolvedCa1 + resolvedCa2 + resolvedProject;
+    const resolvedExam = examScore ?? existing?.examScore ?? 0;
+
+    const totalScore = (caScore * caWeight / 100) + (resolvedExam * examWeight / 100);
 
     let grade = null;
     let gradePoint = null;
@@ -89,9 +112,8 @@ export const enterResult = async (req: Request, res: Response) => {
       gradePoint = gradeInfo.gradePoint;
     }
 
-    let teacherId = req.user!.teacher?.id;
+    let teacherId = requesterTeacherId;
     if (!teacherId) {
-      const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
       teacherId = classArm?.classTeacherId ?? undefined;
       if (!teacherId) {
         const subjectTeacher = await prisma.classSubject.findFirst({ where: { classId: classArm?.classId, subjectId } });
@@ -113,16 +135,22 @@ export const enterResult = async (req: Request, res: Response) => {
         },
       },
       update: {
-        caScore: caScore || existing?.caScore,
-        examScore: examScore || existing?.examScore,
+        ca1Score: resolvedCa1,
+        ca2Score: resolvedCa2,
+        projectScore: resolvedProject,
+        caScore,
+        examScore: resolvedExam,
         totalScore,
         grade,
         gradePoint,
         teacherId,
       },
       create: {
-        caScore: caScore || 0,
-        examScore: examScore || 0,
+        ca1Score: resolvedCa1,
+        ca2Score: resolvedCa2,
+        projectScore: resolvedProject,
+        caScore,
+        examScore: resolvedExam,
         totalScore,
         grade,
         gradePoint,

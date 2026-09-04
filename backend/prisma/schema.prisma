@@ -440,7 +440,10 @@ model Attendance {
 model Result {
   id          String   @id @default(uuid())
 
-  caScore     Float?   // Continuous Assessment
+  ca1Score    Float?   // Continuous Assessment 1
+  ca2Score    Float?   // Continuous Assessment 2
+  projectScore Float?  // Project/Practical
+  caScore     Float?   // Auto-computed: ca1Score + ca2Score + projectScore
   examScore   Float?   // Examination
   totalScore  Float?   // Calculated
   grade       String?

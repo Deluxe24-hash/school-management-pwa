@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Check, X, Clock, FileWarning } from "lucide-react";
 import { attendanceApi, classApi, studentApi, sessionApi } from "../services/api";
 import { ClassArm, Student } from "../types";
+import { useAuth } from "../hooks/useAuth";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { EmptyState } from "../components/EmptyState";
 import { cn } from "../utils/helpers";
@@ -16,6 +17,7 @@ const statusConfig: Record<Status, { label: string; icon: any; classes: string }
 };
 
 export const Attendance = () => {
+  const { user, isAdmin } = useAuth();
   const [classArms, setClassArms] = useState<ClassArm[]>([]);
   const [classArmId, setClassArmId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -29,7 +31,12 @@ export const Attendance = () => {
 
   useEffect(() => {
     classApi.getAll().then((res) => {
-      const arms: ClassArm[] = res.data.data.flatMap((c: any) => c.arms.map((a: any) => ({ ...a, class: c })));
+      let arms: ClassArm[] = res.data.data.flatMap((c: any) => c.arms.map((a: any) => ({ ...a, class: c })));
+      // Non-admin teachers only mark attendance for classes they're the form (homeroom) teacher of.
+      if (!isAdmin()) {
+        const myClassArmIds = new Set((user?.teacher?.classArms || []).map((a: any) => a.id));
+        arms = arms.filter((a) => myClassArmIds.has(a.id));
+      }
       setClassArms(arms);
     }).catch(() => {});
 
@@ -97,7 +104,9 @@ export const Attendance = () => {
         </div>
       </div>
 
-      {!classArmId ? (
+      {!isAdmin() && classArms.length === 0 ? (
+        <div className="card"><EmptyState title="You're not a form teacher" description="Only a class's form (homeroom) teacher can mark its attendance. Ask an admin to assign you as one if this is incorrect." /></div>
+      ) : !classArmId ? (
         <div className="card"><EmptyState title="Select a class" description="Choose a class above to mark attendance." /></div>
       ) : loadingStudents ? (
         <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>

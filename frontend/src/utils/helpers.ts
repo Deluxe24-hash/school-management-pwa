@@ -50,3 +50,14 @@ export const getStatusColor = (status: string) => {
 export const cn = (...classes: (string | boolean | undefined)[]) => {
   return classes.filter(Boolean).join(" ");
 };
+
+/** Resolves the display name for the logged-in user from whichever profile is linked
+ * (teacher/student/parent), falling back to the email prefix for admin-tier accounts
+ * that have no linked profile. */
+export const getUserDisplayName = (user: any): string => {
+  const profile = user?.teacher || user?.student || user?.parent;
+  if (profile?.firstName) {
+    return `${profile.firstName} ${profile.lastName || ""}`.trim();
+  }
+  return user?.email?.split("@")[0] || "there";
+};

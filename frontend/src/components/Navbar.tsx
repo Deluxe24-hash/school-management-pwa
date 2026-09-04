@@ -2,14 +2,19 @@ import { Bell, LogOut, Menu } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
 import { ThemeToggle } from "./ThemeToggle";
-import { getInitials } from "../utils/helpers";
+import { getUserDisplayName } from "../utils/helpers";
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
   const { toggleMobileNav } = useTheme();
 
-  const firstName = user?.student?.firstName || user?.teacher?.firstName || user?.staff?.firstName || "User";
-  const lastName = user?.student?.lastName || user?.teacher?.lastName || user?.staff?.lastName || "";
+  const displayName = getUserDisplayName(user);
+  const initials = displayName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("") || "U";
 
   return (
     <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20">
@@ -36,11 +41,11 @@ export const Navbar = () => {
         <div className="flex items-center gap-3 pl-3 border-l border-gray-200 dark:border-gray-700">
           <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
             <span className="text-sm font-semibold text-primary-700 dark:text-primary-400">
-              {getInitials(firstName, lastName)}
+              {initials}
             </span>
           </div>
           <div className="hidden md:block">
-            <p className="text-sm font-medium text-gray-900 dark:text-white">{firstName} {lastName}</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">{displayName}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role?.toLowerCase().replace("_", " ")}</p>
           </div>
           <button
