@@ -63,6 +63,7 @@ export const teacherApi = {
   getById: (id: string) => api.get(`/teachers/${id}`),
   create: (data: any) => api.post("/teachers", data),
   update: (id: string, data: any) => api.put(`/teachers/${id}`, data),
+  delete: (id: string) => api.delete(`/teachers/${id}`),
   assignSubject: (data: any) => api.post("/teachers/assign-subject", data),
 };
 

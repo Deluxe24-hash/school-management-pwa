@@ -42,7 +42,11 @@ export const Classes = () => {
     setSaving(true);
     setFormError(null);
     try {
-      await classApi.create(classForm);
+      const res = await classApi.create(classForm);
+      const newClass = res.data.data;
+      // Auto-create a default arm so the class is immediately usable in
+      // student/assignment forms, which assign into a specific arm, not the class itself.
+      await classApi.createArm({ classId: newClass.id, name: "A" });
       setClassModalOpen(false);
       setClassForm({ name: "", level: "", description: "" });
       load();
@@ -161,6 +165,9 @@ export const Classes = () => {
       >
         <div className="space-y-4">
           {formError && <div className="px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">{formError}</div>}
+          <div className="px-3 py-2 rounded-md bg-gold-50 dark:bg-gold-500/10 border border-gold-200 dark:border-gold-500/30 text-xs text-gold-700 dark:text-gold-400">
+            A default arm "A" is created automatically — add more arms afterward if the class has multiple streams.
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Name</label>
             <input className="input-field" placeholder="e.g. Primary 4" value={classForm.name} onChange={(e) => setClassForm({ ...classForm, name: e.target.value })} />

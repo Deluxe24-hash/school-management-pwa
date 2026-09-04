@@ -102,3 +102,14 @@ export const assignSubject = async (req: Request, res: Response) => {
     return successResponse(res, assignment, "Subject assigned", 201);
   } catch (error) { throw error; }
 };
+
+export const deleteTeacher = async (req: Request, res: Response) => {
+  try {
+    const teacher = await prisma.teacher.findUnique({ where: { id: req.params.id } });
+    if (!teacher) return errorResponse(res, "Teacher not found", 404);
+    // Deleting the linked user cascades to remove the teacher record and their login together.
+    await prisma.user.delete({ where: { id: teacher.userId } });
+    await logAudit("DELETE", "teachers", teacher.id, req.user!.id, teacher, null, req.ip, req.get("user-agent"));
+    return successResponse(res, null, "Teacher removed");
+  } catch (error) { throw error; }
+};

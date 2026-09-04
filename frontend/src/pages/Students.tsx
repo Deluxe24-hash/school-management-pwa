@@ -308,7 +308,7 @@ export const Students = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Portal email {!editing && <span className="text-gray-400 font-normal">(optional — creates login)</span>}
+                Portal email {!editing && <span className="text-gray-400 font-normal">(optional — a login is created either way)</span>}
               </label>
               <input type="email" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={!!editing} />
             </div>

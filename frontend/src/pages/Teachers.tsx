@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Users } from "lucide-react";
-import { teacherApi } from "../services/api";
-import { Teacher } from "../types";
+import { Plus, Users, Pencil, Trash2, Link2 } from "lucide-react";
+import { teacherApi, classApi, subjectApi } from "../services/api";
+import { Teacher, Class, Subject } from "../types";
 import { useAuth } from "../hooks/useAuth";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { EmptyState } from "../components/EmptyState";
 import { SearchBar } from "../components/SearchBar";
 import { Modal } from "../components/Modal";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 
 interface TeacherForm {
   firstName: string;
@@ -27,16 +28,27 @@ const emptyForm: TeacherForm = {
 export const Teachers = () => {
   const { isAdmin } = useAuth();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Teacher | null>(null);
   const [form, setForm] = useState<TeacherForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [createdNotice, setCreatedNotice] = useState<string | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<Teacher | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignTeacher, setAssignTeacher] = useState<Teacher | null>(null);
+  const [assignForm, setAssignForm] = useState({ classId: "", subjectId: "" });
+  const [assigning, setAssigning] = useState(false);
+  const [assignMsg, setAssignMsg] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -53,28 +65,97 @@ export const Teachers = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    classApi.getAll().then((res) => setClasses(res.data.data)).catch(() => {});
+    subjectApi.getAll().then((res) => setSubjects(res.data.data)).catch(() => {});
+  }, []);
+
   const openCreate = () => {
+    setEditing(null);
     setForm(emptyForm);
     setFormError(null);
-    setCreatedNotice(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (t: Teacher) => {
+    setEditing(t);
+    setForm({
+      firstName: t.firstName,
+      lastName: t.lastName,
+      gender: t.gender as "MALE" | "FEMALE" | "OTHER",
+      email: (t as any).user?.email || t.email || "",
+      phone: t.phone || "",
+      qualification: t.qualification || "",
+      department: t.department || "",
+      dateEmployed: t.dateEmployed ? t.dateEmployed.slice(0, 10) : "",
+    });
+    setFormError(null);
     setModalOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
+    if (!form.firstName.trim() || !form.lastName.trim() || (!editing && !form.email.trim())) {
       setFormError("First name, last name, and email are required.");
       return;
     }
     setSaving(true);
     setFormError(null);
     try {
-      await teacherApi.create(form);
+      if (editing) {
+        const { email, ...rest } = form;
+        await teacherApi.update(editing.id, rest);
+      } else {
+        await teacherApi.create(form);
+      }
       setModalOpen(false);
       load();
     } catch (err: any) {
-      setFormError(err?.message || "Couldn't add teacher.");
+      setFormError(err?.message || "Couldn't save teacher.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await teacherApi.delete(deleteTarget.id);
+      setDeleteTarget(null);
+      load();
+    } catch {
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openAssign = (t: Teacher) => {
+    setAssignTeacher(t);
+    setAssignForm({ classId: "", subjectId: "" });
+    setAssignMsg(null);
+    setAssignModalOpen(true);
+  };
+
+  const handleAssign = async () => {
+    if (!assignTeacher || !assignForm.classId || !assignForm.subjectId) {
+      setAssignMsg("Select both a class and a subject.");
+      return;
+    }
+    setAssigning(true);
+    setAssignMsg(null);
+    try {
+      await teacherApi.assignSubject({
+        teacherId: assignTeacher.id,
+        classId: assignForm.classId,
+        subjectId: assignForm.subjectId,
+      });
+      setAssignMsg("Assigned. This teacher can now grade this subject for this class.");
+      load();
+    } catch (err: any) {
+      setAssignMsg(err?.message || "Couldn't assign — this pairing may already exist.");
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -115,6 +196,7 @@ export const Teachers = () => {
                   <th className="px-4 py-3 font-medium">Department</th>
                   <th className="px-4 py-3 font-medium">Classes</th>
                   <th className="px-4 py-3 font-medium">Email</th>
+                  {isAdmin() && <th className="px-4 py-3 font-medium text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -132,6 +214,21 @@ export const Teachers = () => {
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{t.department || "—"}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{t.classArms?.length || 0}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{(t as any).user?.email || t.email || "—"}</td>
+                    {isAdmin() && (
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <button onClick={() => openAssign(t)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500" title="Assign class & subject">
+                            <Link2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => openEdit(t)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500" title="Edit">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setDeleteTarget(t)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-500 hover:text-red-600" title="Remove">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -143,13 +240,13 @@ export const Teachers = () => {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Add Teacher"
+        title={editing ? "Edit Teacher" : "Add Teacher"}
         size="lg"
         footer={
           <div className="flex justify-end gap-3">
             <button onClick={() => setModalOpen(false)} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} disabled={saving} className="btn-primary">
-              {saving ? "Saving..." : "Add Teacher"}
+              {saving ? "Saving..." : editing ? "Save Changes" : "Add Teacher"}
             </button>
           </div>
         }
@@ -160,14 +257,11 @@ export const Teachers = () => {
               {formError}
             </div>
           )}
-          {createdNotice && (
-            <div className="px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-700 dark:text-emerald-400">
-              {createdNotice}
+          {!editing && (
+            <div className="px-3 py-2 rounded-md bg-gold-50 dark:bg-gold-500/10 border border-gold-200 dark:border-gold-500/30 text-xs text-gold-700 dark:text-gold-400">
+              A portal account is created automatically with a temporary password (Teacher@123) — ask them to change it after first login.
             </div>
           )}
-          <div className="px-3 py-2 rounded-md bg-gold-50 dark:bg-gold-500/10 border border-gold-200 dark:border-gold-500/30 text-xs text-gold-700 dark:text-gold-400">
-            A portal account is created automatically with a temporary password (Teacher@123) — ask them to change it after first login.
-          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">First name</label>
@@ -187,7 +281,7 @@ export const Teachers = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
-              <input type="email" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <input type="email" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={!!editing} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Phone</label>
@@ -208,6 +302,49 @@ export const Teachers = () => {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        title={`Assign Class & Subject — ${assignTeacher?.firstName} ${assignTeacher?.lastName}`}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button onClick={() => setAssignModalOpen(false)} className="btn-secondary">Close</button>
+            <button onClick={handleAssign} disabled={assigning} className="btn-primary">{assigning ? "Assigning..." : "Assign"}</button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {assignMsg && <p className="text-sm text-gray-600 dark:text-gray-300">{assignMsg}</p>}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Class</label>
+            <select className="input-field" value={assignForm.classId} onChange={(e) => setAssignForm({ ...assignForm, classId: e.target.value })}>
+              <option value="">Select a class</option>
+              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Subject</label>
+            <select className="input-field" value={assignForm.subjectId} onChange={(e) => setAssignForm({ ...assignForm, subjectId: e.target.value })}>
+              <option value="">Select a subject</option>
+              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Once assigned, this teacher will see this class + subject when marking attendance and entering results.
+          </p>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Remove teacher"
+        message={`Remove ${deleteTarget?.firstName} ${deleteTarget?.lastName}? Their portal login will also be deleted.`}
+        confirmText="Remove"
+        isLoading={deleting}
+      />
     </div>
   );
 };

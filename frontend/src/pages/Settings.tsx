@@ -1,32 +1,61 @@
 import { useEffect, useState } from "react";
-import { Save } from "lucide-react";
+import { Save, Plus, Trash2, GraduationCap } from "lucide-react";
 import { settingApi } from "../services/api";
 import { LoadingSpinner } from "../components/LoadingSpinner";
+
+interface GradeRow { grade: string; min: string; max: string; remark: string; gp: string; }
+
+const defaultGrading: GradeRow[] = [
+  { grade: "A", min: "70", max: "100", remark: "Excellent", gp: "5" },
+  { grade: "B", min: "60", max: "69", remark: "Very Good", gp: "4" },
+  { grade: "C", min: "50", max: "59", remark: "Good", gp: "3" },
+  { grade: "D", min: "40", max: "49", remark: "Pass", gp: "2" },
+  { grade: "F", min: "0", max: "39", remark: "Fail", gp: "0" },
+];
 
 export const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [form, setForm] = useState({
-    schoolName: "", motto: "", address: "", phone: "", email: "", website: "",
+    schoolName: "", motto: "", address: "", phone: "", email: "", website: "", logoUrl: "",
     principalName: "", headTeacherName: "", caWeight: 40, examWeight: 60,
     attendanceThreshold: 75, currency: "NGN",
   });
+  const [grading, setGrading] = useState<GradeRow[]>(defaultGrading);
 
   useEffect(() => {
     settingApi.get()
       .then((res) => {
         const s = res.data.data;
-        if (s) setForm((f) => ({ ...f, ...s }));
+        if (s) {
+          setForm((f) => ({ ...f, ...s }));
+          if (Array.isArray(s.gradingSystem) && s.gradingSystem.length > 0) {
+            setGrading(s.gradingSystem.map((g: any) => ({
+              grade: g.grade ?? "", min: String(g.min ?? ""), max: String(g.max ?? ""),
+              remark: g.remark ?? "", gp: String(g.gp ?? ""),
+            })));
+          }
+        }
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const updateRow = (i: number, patch: Partial<GradeRow>) => {
+    setGrading((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  };
+
+  const addRow = () => setGrading((rows) => [...rows, { grade: "", min: "", max: "", remark: "", gp: "" }]);
+  const removeRow = (i: number) => setGrading((rows) => rows.filter((_, idx) => idx !== i));
 
   const handleSave = async () => {
     setSaving(true);
     setSaveMsg(null);
     try {
-      await settingApi.update(form);
+      const gradingSystem = grading
+        .filter((g) => g.grade.trim())
+        .map((g) => ({ grade: g.grade, min: Number(g.min) || 0, max: Number(g.max) || 0, remark: g.remark, gp: Number(g.gp) || 0 }));
+      await settingApi.update({ ...form, gradingSystem });
       setSaveMsg("Settings saved.");
     } catch (err: any) {
       setSaveMsg(err?.message || "Couldn't save settings.");
@@ -46,6 +75,27 @@ export const Settings = () => {
 
       <div className="card space-y-4">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">School Identity</h3>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Logo</label>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-primary-950/40 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {form.logoUrl ? (
+                <img src={form.logoUrl} alt="School logo" className="w-full h-full object-contain" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
+              ) : (
+                <GraduationCap className="w-6 h-6 text-gray-300" />
+              )}
+            </div>
+            <input
+              className="input-field flex-1"
+              placeholder="https://example.com/logo.png"
+              value={form.logoUrl}
+              onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+            />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Paste a hosted image URL — direct file upload isn't set up yet.</p>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">School name</label>
@@ -95,6 +145,29 @@ export const Settings = () => {
           </div>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400">CA and exam weight should add up to 100%.</p>
+
+        <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Grade bands</label>
+            <button onClick={addRow} className="btn-secondary text-xs flex items-center gap-1.5 py-1.5">
+              <Plus className="w-3.5 h-3.5" /> Add grade
+            </button>
+          </div>
+          <div className="space-y-2">
+            {grading.map((row, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_1fr_2fr_1fr_auto] gap-2 items-center">
+                <input className="input-field py-1.5 text-sm" placeholder="Grade" value={row.grade} onChange={(e) => updateRow(i, { grade: e.target.value })} />
+                <input className="input-field py-1.5 text-sm" placeholder="Min" type="number" value={row.min} onChange={(e) => updateRow(i, { min: e.target.value })} />
+                <input className="input-field py-1.5 text-sm" placeholder="Max" type="number" value={row.max} onChange={(e) => updateRow(i, { max: e.target.value })} />
+                <input className="input-field py-1.5 text-sm" placeholder="Remark" value={row.remark} onChange={(e) => updateRow(i, { remark: e.target.value })} />
+                <input className="input-field py-1.5 text-sm" placeholder="GP" type="number" value={row.gp} onChange={(e) => updateRow(i, { gp: e.target.value })} />
+                <button onClick={() => removeRow(i)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">

@@ -104,24 +104,22 @@ export const createStudent = async (req: Request, res: Response) => {
   try {
     const data = studentSchema.parse(req).body;
 
-    // Create user account if email provided
-    let userId: string | undefined;
-    if (data.email) {
-      const bcrypt = require("bcryptjs");
-      const password = await bcrypt.hash("Student@123", 12);
-      const user = await prisma.user.create({
-        data: {
-          email: data.email.toLowerCase(),
-          password,
-          role: "STUDENT",
-        },
-      });
-      userId = user.id;
-    }
+    // Every student needs a linked user account (userId is required on Student).
+    // Use the provided email, or generate one from the admission number if none was given.
+    const bcrypt = require("bcryptjs");
+    const admissionNumber = generateAdmissionNumber();
+    const email = data.email
+      ? data.email.toLowerCase()
+      : `${admissionNumber.replace(/\//g, "").toLowerCase()}@students.local`;
+    const password = await bcrypt.hash("Student@123", 12);
+    const user = await prisma.user.create({
+      data: { email, password, role: "STUDENT" },
+    });
+    const userId = user.id;
 
     const student = await prisma.student.create({
       data: {
-        admissionNumber: generateAdmissionNumber(),
+        admissionNumber,
         firstName: data.firstName,
         lastName: data.lastName,
         middleName: data.middleName,
