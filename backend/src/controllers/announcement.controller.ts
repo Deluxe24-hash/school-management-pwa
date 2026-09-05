@@ -53,6 +53,20 @@ export const createAnnouncement = async (req: Request, res: Response) => {
       },
     });
 
+    // Notify everyone (or, if targetRoles was set, only users with those roles).
+    const where = Array.isArray(targetRoles) && targetRoles.length > 0 ? { role: { in: targetRoles } } : {};
+    const recipients = await prisma.user.findMany({ where, select: { id: true } });
+    if (recipients.length > 0) {
+      await prisma.notification.createMany({
+        data: recipients.map((u) => ({
+          userId: u.id,
+          type: "ANNOUNCEMENT" as const,
+          title: `New announcement: ${title}`,
+          content: content.slice(0, 140),
+        })),
+      });
+    }
+
     await logAudit("CREATE", "announcements", announcement.id, req.user!.id, null, req.body, req.ip, req.get("user-agent"));
     return successResponse(res, announcement, "Announcement published", 201);
   } catch (error) { throw error; }

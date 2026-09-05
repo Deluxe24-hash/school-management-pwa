@@ -86,6 +86,19 @@ enum AssignmentType {
   PRACTICAL
 }
 
+enum LoanStatus {
+  BORROWED
+  RETURNED
+  OVERDUE
+}
+
+enum ApplicationStatus {
+  PENDING
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+}
+
 // ==================== CORE USER ====================
 
 model User {
@@ -303,6 +316,7 @@ model Student {
   attendances     Attendance[]
   results         Result[]
   submissions     Submission[]
+  bookLoans       BookLoan[]
   fees            Fee[]
   payments        Payment[]
 
@@ -735,4 +749,72 @@ model AuditLog {
   @@index([entity])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ==================== LIBRARY ====================
+
+model Book {
+  id          String   @id @default(uuid())
+  title       String
+  author      String
+  isbn        String?
+  category    String?
+  totalCopies Int      @default(1)
+  availableCopies Int  @default(1)
+
+  loans       BookLoan[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("books")
+}
+
+model BookLoan {
+  id          String   @id @default(uuid())
+
+  bookId      String
+  book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  borrowedAt  DateTime @default(now())
+  dueDate     DateTime
+  returnedAt  DateTime?
+  status      LoanStatus @default(BORROWED)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("book_loans")
+}
+
+// ==================== ADMISSIONS ====================
+
+model Application {
+  id              String   @id @default(uuid())
+  firstName       String
+  lastName        String
+  middleName      String?
+  gender          Gender
+  dateOfBirth     DateTime?
+
+  classAppliedFor String
+  previousSchool  String?
+
+  parentName      String
+  parentPhone     String
+  parentEmail     String?
+  address         String?
+
+  status          ApplicationStatus @default(PENDING)
+  notes           String?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+
+  submittedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("applications")
 }

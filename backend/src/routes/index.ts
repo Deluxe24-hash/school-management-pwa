@@ -13,6 +13,12 @@ import assignmentRoutes from "./assignment.routes";
 import announcementRoutes from "./announcement.routes";
 import settingRoutes from "./setting.routes";
 import reportRoutes from "./report.routes";
+import timetableRoutes from "./timetable.routes";
+import reportcardRoutes from "./reportcard.routes";
+import messageRoutes from "./message.routes";
+import notificationRoutes from "./notification.routes";
+import libraryRoutes from "./library.routes";
+import admissionRoutes from "./admission.routes";
 
 const router = Router();
 
@@ -30,5 +36,11 @@ router.use("/assignments", assignmentRoutes);
 router.use("/announcements", announcementRoutes);
 router.use("/settings", settingRoutes);
 router.use("/reports", reportRoutes);
+router.use("/timetable", timetableRoutes);
+router.use("/report-cards", reportcardRoutes);
+router.use("/messages", messageRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/library", libraryRoutes);
+router.use("/admissions", admissionRoutes);
 
 export default router;

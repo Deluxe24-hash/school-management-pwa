@@ -165,4 +165,52 @@ export const reportApi = {
     api.get("/reports/class-performance", { params }),
 };
 
+// Timetable APIs
+export const timetableApi = {
+  getAll: (params?: any) => api.get("/timetable", { params }),
+  create: (data: any) => api.post("/timetable", data),
+  delete: (id: string) => api.delete(`/timetable/${id}`),
+};
+
+// Report Card APIs
+export const reportCardApi = {
+  get: (params: any) => api.get("/report-cards", { params }),
+  generate: (data: any) => api.post("/report-cards/generate", data),
+};
+
+// Message APIs
+export const messageApi = {
+  getInbox: () => api.get("/messages/inbox"),
+  getSent: () => api.get("/messages/sent"),
+  getContacts: () => api.get("/messages/contacts"),
+  send: (data: any) => api.post("/messages", data),
+  markRead: (id: string) => api.put(`/messages/${id}/read`),
+};
+
+// Notification APIs
+export const notificationApi = {
+  getAll: () => api.get("/notifications"),
+  markRead: (id: string) => api.put(`/notifications/${id}/read`),
+  markAllRead: () => api.put("/notifications/read-all"),
+};
+
+// Library APIs
+export const libraryApi = {
+  getBooks: (params?: any) => api.get("/library/books", { params }),
+  createBook: (data: any) => api.post("/library/books", data),
+  updateBook: (id: string, data: any) => api.put(`/library/books/${id}`, data),
+  deleteBook: (id: string) => api.delete(`/library/books/${id}`),
+  getLoans: (params?: any) => api.get("/library/loans", { params }),
+  borrowBook: (data: any) => api.post("/library/loans", data),
+  returnBook: (id: string) => api.put(`/library/loans/${id}/return`),
+};
+
+// Admissions APIs
+export const admissionApi = {
+  apply: (data: any) => api.post("/admissions/apply", data),
+  getAll: (params?: any) => api.get("/admissions", { params }),
+  review: (id: string, data: any) => api.put(`/admissions/${id}/review`, data),
+  accept: (id: string) => api.post(`/admissions/${id}/accept`),
+};
+
 export default api;

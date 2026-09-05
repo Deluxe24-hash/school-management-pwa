@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Users, GraduationCap, School, BookOpen,
   Calendar, ClipboardCheck, FileText, CreditCard, ClipboardList,
   Megaphone, Settings, ChevronLeft, ChevronRight, School as SchoolIcon,
+  Clock, FileBadge, MessageSquare, Library, UserPlus,
 } from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
@@ -14,9 +15,14 @@ const menuItems = [
   { path: "/classes", label: "Classes", icon: School, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/subjects", label: "Subjects", icon: BookOpen, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/sessions", label: "Sessions", icon: Calendar, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"] },
+  { path: "/timetable", label: "Timetable", icon: Clock, roles: [] },
   { path: "/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/results", label: "Results", icon: FileText, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
+  { path: "/report-cards", label: "Report Cards", icon: FileBadge, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/fees", label: "Fees", icon: CreditCard, roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT"] },
+  { path: "/library", label: "Library", icon: Library, roles: [] },
+  { path: "/messages", label: "Messages", icon: MessageSquare, roles: [] },
+  { path: "/admissions", label: "Admissions", icon: UserPlus, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"] },
   { path: "/assignments", label: "Assignments", icon: ClipboardList, roles: [] },
   { path: "/announcements", label: "Announcements", icon: Megaphone, roles: [] },
   { path: "/settings", label: "Settings", icon: Settings, roles: ["SUPER_ADMIN", "ADMIN"] },

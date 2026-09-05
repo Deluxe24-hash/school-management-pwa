@@ -5,15 +5,21 @@ import { useAuth } from "./hooks/useAuth";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Login } from "./pages/Login";
+import { Apply } from "./pages/Apply";
 import { Dashboard } from "./pages/Dashboard";
 import { Students } from "./pages/Students";
 import { Teachers } from "./pages/Teachers";
 import { Classes } from "./pages/Classes";
 import { Subjects } from "./pages/Subjects";
 import { Sessions } from "./pages/Sessions";
+import { Timetable } from "./pages/Timetable";
 import { Attendance } from "./pages/Attendance";
 import { Results } from "./pages/Results";
+import { ReportCards } from "./pages/ReportCards";
 import { Fees } from "./pages/Fees";
+import { Library } from "./pages/Library";
+import { Messages } from "./pages/Messages";
+import { Admissions } from "./pages/Admissions";
 import { Assignments } from "./pages/Assignments";
 import { Announcements } from "./pages/Announcements";
 import { Settings } from "./pages/Settings";
@@ -39,6 +45,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/apply" element={<Apply />} />
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -47,9 +54,14 @@ function App() {
         <Route path="/classes" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Classes /></ProtectedRoute>} />
         <Route path="/subjects" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Subjects /></ProtectedRoute>} />
         <Route path="/sessions" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL"]}><Sessions /></ProtectedRoute>} />
+        <Route path="/timetable" element={<Timetable />} />
         <Route path="/attendance" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Attendance /></ProtectedRoute>} />
         <Route path="/results" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Results /></ProtectedRoute>} />
+        <Route path="/report-cards" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><ReportCards /></ProtectedRoute>} />
         <Route path="/fees" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "ACCOUNTANT"]}><Fees /></ProtectedRoute>} />
+        <Route path="/library" element={<Library />} />
+        <Route path="/messages" element={<Messages />} />
+        <Route path="/admissions" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL"]}><Admissions /></ProtectedRoute>} />
         <Route path="/assignments" element={<Assignments />} />
         <Route path="/announcements" element={<Announcements />} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN"]}><Settings /></ProtectedRoute>} />
