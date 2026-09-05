@@ -20,6 +20,7 @@ export const getAssignments = async (req: Request, res: Response) => {
         where,
         include: {
           subject: true,
+          classArm: { include: { class: true } },
           teacher: { select: { firstName: true, lastName: true } },
           _count: { select: { submissions: true } },
         },

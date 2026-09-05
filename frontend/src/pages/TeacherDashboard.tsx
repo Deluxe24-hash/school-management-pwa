@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users, School, BookOpen, Clock, ClipboardList, ClipboardCheck,
-  MessageSquare, Bell, ChevronRight, CheckCircle2, AlertCircle, BarChart3,
+  MessageSquare, Bell, CheckCircle2, AlertCircle, BarChart3,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { classApi, timetableApi, assignmentApi, attendanceApi, messageApi, notificationApi, sessionApi } from "../services/api";
@@ -40,6 +40,8 @@ export const TeacherDashboard = ({ greetingName }: { greetingName: string }) => 
   const [pendingAttendanceClasses, setPendingAttendanceClasses] = useState<any[]>([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [classOverview, setClassOverview] = useState<any[]>([]);
+  const [subjectOverview, setSubjectOverview] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const today = new Date();
@@ -79,26 +81,74 @@ export const TeacherDashboard = ({ greetingName }: { greetingName: string }) => 
       sessionApi.getCurrent().catch(() => null),
     ]).then(async ([classesRes, timetableRes, assignmentsRes, inboxRes, notifRes, sessionRes]) => {
       if (!mounted) return;
-      setAllClasses(classesRes.data.data);
+      const classesData = classesRes.data.data;
+      setAllClasses(classesData);
 
       const entries = timetableRes.data.data.filter((e: any) => e.day === todayName)
         .sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
       setTodaySchedule(entries);
 
-      const assignments = assignmentsRes.data.data.assignments;
-      setSubmissionsReceived(assignments.reduce((sum: number, a: any) => sum + (a._count?.submissions ?? 0), 0));
+      const myAssignments = assignmentsRes.data.data.assignments;
+      setSubmissionsReceived(myAssignments.reduce((sum: number, a: any) => sum + (a._count?.submissions ?? 0), 0));
 
       setUnreadMessages(inboxRes.data.data.filter((m: any) => !m.isRead).length);
       setUnreadNotifications(notifRes.data.data.unreadCount);
 
-      // Check which homeroom classes haven't had attendance marked yet today.
+      // Subject overview: group this teacher's own assignments by subject+class,
+      // and pair each with the total students enrolled across that class's arms.
+      const subjectGroups = new Map<string, any>();
+      classSubjects.forEach((cs: any) => {
+        const key = `${cs.subject?.id}-${cs.class?.id}`;
+        const classDef = classesData.find((c: any) => c.id === cs.class?.id);
+        const studentsOffering = (classDef?.arms || []).reduce((sum: number, a: any) => sum + (a._count?.enrollments ?? 0), 0);
+        subjectGroups.set(key, {
+          subjectName: cs.subject?.name,
+          className: cs.class?.name,
+          classId: cs.class?.id,
+          subjectId: cs.subject?.id,
+          studentsOffering,
+          totalAssignments: 0,
+          totalSubmissions: 0,
+        });
+      });
+      myAssignments.forEach((a: any) => {
+        const key = `${a.subject?.id}-${a.classArm?.class?.id}`;
+        const group = subjectGroups.get(key);
+        if (group) {
+          group.totalAssignments += 1;
+          group.totalSubmissions += a._count?.submissions ?? 0;
+        }
+      });
+      if (mounted) setSubjectOverview(Array.from(subjectGroups.values()));
+
+      // Class overview: for each homeroom class, today's attendance breakdown plus
+      // every assignment given to that class (from any subject teacher, not just this one).
       if (homeroomArms.length > 0 && sessionRes) {
-        const checks = await Promise.all(
-          homeroomArms.map((a: any) =>
-            attendanceApi.getAll({ classArmId: a.id, date: todayIso }).then((r: any) => ({ arm: a, count: r.data.data.total }))
-          )
+        const results = await Promise.all(
+          homeroomArms.map(async (arm: any) => {
+            const [attendanceRes, classAssignmentsRes] = await Promise.all([
+              attendanceApi.getAll({ classArmId: arm.id, date: todayIso, limit: 300 }),
+              assignmentApi.getAll({ classArmId: arm.id, limit: 100 }),
+            ]);
+            const records = attendanceRes.data.data.attendances;
+            const classAssignments = classAssignmentsRes.data.data.assignments;
+            return {
+              arm,
+              totalStudents: arm._count?.enrollments ?? 0,
+              present: records.filter((r: any) => r.status === "PRESENT").length,
+              absent: records.filter((r: any) => r.status === "ABSENT").length,
+              late: records.filter((r: any) => r.status === "LATE").length,
+              excused: records.filter((r: any) => r.status === "EXCUSED").length,
+              attendanceTaken: records.length > 0,
+              totalAssignments: classAssignments.length,
+              totalSubmissions: classAssignments.reduce((sum: number, a: any) => sum + (a._count?.submissions ?? 0), 0),
+            };
+          })
         );
-        if (mounted) setPendingAttendanceClasses(checks.filter((c) => c.count === 0).map((c) => c.arm));
+        if (mounted) {
+          setClassOverview(results);
+          setPendingAttendanceClasses(results.filter((r) => !r.attendanceTaken).map((r) => r.arm));
+        }
       }
     }).finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
@@ -144,6 +194,44 @@ export const TeacherDashboard = ({ greetingName }: { greetingName: string }) => 
                 </p>
               </div>
               <button onClick={() => navigate("/attendance")} className="btn-primary text-xs py-1.5">Take Attendance</button>
+            </div>
+          )}
+
+          {/* Class Overview — form teachers only */}
+          {classOverview.length > 0 && (
+            <div className="card">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3">Class Overview</h3>
+              <div className="space-y-4">
+                {classOverview.map((co: any) => (
+                  <div key={co.arm.id} className="px-4 py-3.5 rounded-md border border-gray-200 dark:border-gray-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-medium text-gray-900 dark:text-white">{co.arm.fullName}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{co.totalStudents} students</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Present Today</p>
+                        <p className="font-serif font-semibold text-lg text-emerald-700 dark:text-emerald-400">{co.attendanceTaken ? co.present : "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Absent Today</p>
+                        <p className="font-serif font-semibold text-lg text-red-700 dark:text-red-400">{co.attendanceTaken ? co.absent : "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Late / Excused</p>
+                        <p className="font-serif font-semibold text-lg text-gold-600 dark:text-gold-400">{co.attendanceTaken ? `${co.late} / ${co.excused}` : "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Assignments</p>
+                        <p className="font-serif font-semibold text-lg text-primary-900 dark:text-white">{co.totalAssignments} <span className="text-xs font-sans font-normal text-gray-500 dark:text-gray-400">({co.totalSubmissions} submitted)</span></p>
+                      </div>
+                    </div>
+                    {!co.attendanceTaken && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2.5">Attendance not yet taken today.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -205,18 +293,25 @@ export const TeacherDashboard = ({ greetingName }: { greetingName: string }) => 
             </div>
           </div>
 
-          {/* My Subjects */}
-          {uniqueSubjects.length > 0 && (
+          {/* My Subjects Overview */}
+          {subjectOverview.length > 0 && (
             <div className="card">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3">My Subjects</h3>
-              <div className="flex flex-wrap gap-2">
-                {uniqueSubjects.map((cs: any) => (
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3">My Subjects Overview</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {subjectOverview.map((so: any, i: number) => (
                   <button
-                    key={cs.subject?.id}
+                    key={i}
                     onClick={() => navigate("/results")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 text-sm font-medium hover:bg-primary-100 dark:hover:bg-primary-900/40"
+                    className="text-left px-4 py-3 rounded-md border border-gray-200 dark:border-gray-800 hover:border-gold-300 dark:hover:border-gold-500/40 transition-colors"
                   >
-                    {cs.subject?.name} <ChevronRight className="w-3.5 h-3.5" />
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-900 dark:text-white">{so.subjectName}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{so.className}</span>
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-600 dark:text-gray-300">
+                      <span>{so.studentsOffering} students offering</span>
+                      <span>{so.totalAssignments} assignment{so.totalAssignments === 1 ? "" : "s"} · {so.totalSubmissions} submitted</span>
+                    </div>
                   </button>
                 ))}
               </div>
