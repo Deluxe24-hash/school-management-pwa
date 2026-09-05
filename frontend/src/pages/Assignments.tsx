@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, ClipboardList } from "lucide-react";
+import { Plus, ClipboardList, CheckCircle2 } from "lucide-react";
 import { assignmentApi, classApi, subjectApi, sessionApi } from "../services/api";
 import { Assignment, ClassArm, Subject } from "../types";
 import { useAuth } from "../hooks/useAuth";
@@ -28,6 +28,11 @@ export const Assignments = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
+  const [activeAssignment, setActiveAssignment] = useState<any>(null);
+  const [submissionScores, setSubmissionScores] = useState<Record<string, { score: string; feedback: string }>>({});
+  const [gradingId, setGradingId] = useState<string | null>(null);
+
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -53,6 +58,32 @@ export const Assignments = () => {
   }, []);
 
   const openCreate = () => { setForm(emptyForm); setFormError(null); setModalOpen(true); };
+
+  const openSubmissions = async (assignmentId: string) => {
+    const res = await assignmentApi.getById(assignmentId);
+    const assignment = res.data.data;
+    setActiveAssignment(assignment);
+    setSubmissionScores(
+      Object.fromEntries(
+        assignment.submissions.map((s: any) => [s.id, { score: s.score?.toString() ?? "", feedback: s.feedback ?? "" }])
+      )
+    );
+    setSubmissionsModalOpen(true);
+  };
+
+  const handleGrade = async (submissionId: string) => {
+    const entry = submissionScores[submissionId];
+    if (!entry || entry.score === "") return;
+    setGradingId(submissionId);
+    try {
+      await assignmentApi.grade({ submissionId, score: Number(entry.score), feedback: entry.feedback });
+      const res = await assignmentApi.getById(activeAssignment.id);
+      setActiveAssignment(res.data.data);
+      load();
+    } finally {
+      setGradingId(null);
+    }
+  };
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.subjectId || !form.classArmId || !form.dueDate) {
@@ -124,7 +155,12 @@ export const Assignments = () => {
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Due {formatDate(a.dueDate)}</span>
               </div>
               {a.description && <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">{a.description}</p>}
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">{a._count?.submissions ?? 0} submission{(a._count?.submissions ?? 0) === 1 ? "" : "s"} · Max score {a.maxScore}</p>
+              <div className="flex items-center justify-between mt-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400">{a._count?.submissions ?? 0} submission{(a._count?.submissions ?? 0) === 1 ? "" : "s"} · Max score {a.maxScore}</p>
+                {isTeacher() && (
+                  <button onClick={() => openSubmissions(a.id)} className="btn-secondary text-xs py-1">View Submissions</button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -186,6 +222,66 @@ export const Assignments = () => {
             </div>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={submissionsModalOpen}
+        onClose={() => setSubmissionsModalOpen(false)}
+        title={`Submissions — ${activeAssignment?.title || ""}`}
+        size="lg"
+        footer={<button onClick={() => setSubmissionsModalOpen(false)} className="btn-secondary">Close</button>}
+      >
+        {!activeAssignment?.submissions || activeAssignment.submissions.length === 0 ? (
+          <EmptyState title="No submissions yet" description="Submissions will appear here once students turn in their work." />
+        ) : (
+          <div className="space-y-3">
+            {activeAssignment.submissions.map((s: any) => {
+              const entry = submissionScores[s.id] || { score: "", feedback: "" };
+              const isGraded = s.score !== null && s.score !== undefined;
+              return (
+                <div key={s.id} className="px-4 py-3 rounded-md border border-gray-200 dark:border-gray-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {s.student?.firstName} {s.student?.lastName}
+                    </span>
+                    {isGraded && (
+                      <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Graded
+                      </span>
+                    )}
+                  </div>
+                  {s.content && <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{s.content}</p>}
+                  <div className="flex items-end gap-2 flex-wrap">
+                    <div className="w-24">
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Score / {activeAssignment.maxScore}</label>
+                      <input
+                        type="number" min={0} max={activeAssignment.maxScore}
+                        className="input-field py-1.5"
+                        value={entry.score}
+                        onChange={(e) => setSubmissionScores({ ...submissionScores, [s.id]: { ...entry, score: e.target.value } })}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-[10rem]">
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Feedback</label>
+                      <input
+                        className="input-field py-1.5"
+                        value={entry.feedback}
+                        onChange={(e) => setSubmissionScores({ ...submissionScores, [s.id]: { ...entry, feedback: e.target.value } })}
+                      />
+                    </div>
+                    <button
+                      onClick={() => handleGrade(s.id)}
+                      disabled={gradingId === s.id || entry.score === ""}
+                      className="btn-primary text-xs py-2"
+                    >
+                      {gradingId === s.id ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Modal>
     </div>
   );

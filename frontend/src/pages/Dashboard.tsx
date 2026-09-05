@@ -4,6 +4,7 @@ import { Users, GraduationCap, UserCheck, School, BookOpen, CalendarCheck, Clipb
 import { reportApi } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { getUserDisplayName } from "../utils/helpers";
+import { TeacherDashboard } from "./TeacherDashboard";
 import { StatCard } from "../components/StatCard";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { EmptyState } from "../components/EmptyState";
@@ -113,67 +114,6 @@ const AdminDashboard = ({ greetingName }: { greetingName: string }) => {
           </div>
         </>
       ) : null}
-    </div>
-  );
-};
-
-const TeacherDashboard = ({ greetingName }: { greetingName: string }) => {
-  const { user } = useAuth();
-  const classArms = user?.teacher?.classArms || []; // homeroom classes (form teacher)
-  const classSubjects = user?.teacher?.classSubjects || []; // subjects taught, any class
-  const isFormTeacher = classArms.length > 0;
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl sm:text-3xl font-serif font-semibold text-primary-900 dark:text-white">
-          Welcome back, <span className="capitalize">{greetingName}</span>
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">
-          {isFormTeacher && classSubjects.length > 0
-            ? `You're the form teacher for ${classArms.map((a: any) => a.fullName).join(", ")}, and teach ${classSubjects.length} subject${classSubjects.length === 1 ? "" : "s"}.`
-            : isFormTeacher
-            ? `You're the form teacher for ${classArms.map((a: any) => a.fullName).join(", ")}.`
-            : classSubjects.length > 0
-            ? `You teach ${classSubjects.length} subject${classSubjects.length === 1 ? "" : "s"}. Only form teachers can mark attendance.`
-            : "You haven't been assigned to any class or subject yet — ask an admin to set this up."}
-        </p>
-      </div>
-
-      {classSubjects.length > 0 && (
-        <div className="card">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3">Subjects You Teach</h3>
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {classSubjects.map((cs: any) => (
-              <div key={cs.id} className="flex items-center justify-between py-2.5">
-                <span className="text-sm font-medium text-gray-900 dark:text-white">{cs.subject?.name}</span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">{cs.class?.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isFormTeacher && (
-        <div className="card border-l-[3px] border-l-gold-400">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3">Form Teacher Of</h3>
-          <div className="flex flex-wrap gap-2">
-            {classArms.map((a: any) => (
-              <span key={a.id} className="px-3 py-1.5 rounded-md bg-gold-50 dark:bg-gold-500/10 text-gold-700 dark:text-gold-400 text-sm font-medium">
-                {a.fullName}
-              </span>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">Only form teachers can mark daily attendance for their class.</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {isFormTeacher && <QuickLink to="/attendance" icon={CalendarCheck} label="Mark Attendance" />}
-        {classSubjects.length > 0 && <QuickLink to="/results" icon={BookOpen} label="Enter Scores (CA1, CA2, Project, Exam)" />}
-        <QuickLink to="/assignments" icon={ClipboardList} label="Assignments" />
-        <QuickLink to="/announcements" icon={Megaphone} label="Announcements" />
-      </div>
     </div>
   );
 };

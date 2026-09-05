@@ -31,9 +31,9 @@ export const login = async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
       include: {
-        student: { include: { parent: true } },
-        teacher: true,
-        parent: { include: { children: true } },
+        student: { include: { parent: true, enrollments: { include: { classArm: { include: { class: true } } }, orderBy: { enrolledAt: "desc" }, take: 1 } } },
+        teacher: { include: { classArms: { include: { class: true } }, classSubjects: { include: { subject: true, class: true } } } },
+        parent: { include: { children: { include: { enrollments: { include: { classArm: { include: { class: true } } } } } } } },
         staff: true,
       },
     });
