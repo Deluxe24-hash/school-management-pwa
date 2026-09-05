@@ -81,9 +81,17 @@ export const createTeacher = async (req: Request, res: Response) => {
 
 export const updateTeacher = async (req: Request, res: Response) => {
   try {
+    const { dateEmployed, ...rest } = req.body;
+    const data: any = { ...rest };
+    // dateEmployed arrives as an empty string when left blank in the form — Prisma
+    // rejects that for a DateTime column, so normalize it to a real Date or null.
+    if (dateEmployed !== undefined) {
+      data.dateEmployed = dateEmployed ? new Date(dateEmployed) : null;
+    }
+
     const teacher = await prisma.teacher.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
       include: { user: true },
     });
     await logAudit("UPDATE", "teachers", teacher.id, req.user!.id, null, req.body, req.ip, req.get("user-agent"));

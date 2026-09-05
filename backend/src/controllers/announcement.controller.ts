@@ -74,9 +74,14 @@ export const createAnnouncement = async (req: Request, res: Response) => {
 
 export const updateAnnouncement = async (req: Request, res: Response) => {
   try {
+    const { expiresAt, ...rest } = req.body;
+    const data: any = { ...rest };
+    if (expiresAt !== undefined) {
+      data.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    }
     const announcement = await prisma.announcement.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
     });
     await logAudit("UPDATE", "announcements", announcement.id, req.user!.id, null, req.body, req.ip, req.get("user-agent"));
     return successResponse(res, announcement, "Announcement updated");
