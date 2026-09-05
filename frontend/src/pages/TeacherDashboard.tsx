@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users, School, BookOpen, Clock, ClipboardList, ClipboardCheck,
-  MessageSquare, Bell, ChevronRight, CheckCircle2, AlertCircle,
+  MessageSquare, Bell, ChevronRight, CheckCircle2, AlertCircle, BarChart3,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { classApi, timetableApi, assignmentApi, attendanceApi, messageApi, notificationApi, sessionApi } from "../services/api";
@@ -234,6 +234,7 @@ export const TeacherDashboard = ({ greetingName }: { greetingName: string }) => 
               <QuickAction to="/timetable" icon={Clock} label="Timetable" />
               <QuickAction to="/messages" icon={MessageSquare} label="Messages" />
               <QuickAction to="/report-cards" icon={School} label="Report Cards" />
+              <QuickAction to="/performance" icon={BarChart3} label="Performance" />
               <QuickAction to="/announcements" icon={Bell} label="Announcements" />
             </div>
           </div>

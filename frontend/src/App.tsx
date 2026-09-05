@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { useAuthStore } from "./store/authStore";
 import { useAuth } from "./hooks/useAuth";
 import { Layout } from "./components/Layout";
@@ -16,6 +16,8 @@ import { Timetable } from "./pages/Timetable";
 import { Attendance } from "./pages/Attendance";
 import { Results } from "./pages/Results";
 import { ReportCards } from "./pages/ReportCards";
+import { LoadingSpinner } from "./components/LoadingSpinner";
+const Performance = lazy(() => import("./pages/Performance").then((m) => ({ default: m.Performance })));
 import { Fees } from "./pages/Fees";
 import { Library } from "./pages/Library";
 import { Messages } from "./pages/Messages";
@@ -58,6 +60,7 @@ function App() {
         <Route path="/attendance" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Attendance /></ProtectedRoute>} />
         <Route path="/results" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Results /></ProtectedRoute>} />
         <Route path="/report-cards" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><ReportCards /></ProtectedRoute>} />
+        <Route path="/performance" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Suspense fallback={<div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>}><Performance /></Suspense></ProtectedRoute>} />
         <Route path="/fees" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "ACCOUNTANT"]}><Fees /></ProtectedRoute>} />
         <Route path="/library" element={<Library />} />
         <Route path="/messages" element={<Messages />} />

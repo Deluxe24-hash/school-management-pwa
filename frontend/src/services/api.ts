@@ -213,4 +213,11 @@ export const admissionApi = {
   accept: (id: string) => api.post(`/admissions/${id}/accept`),
 };
 
+// Analytics APIs
+export const analyticsApi = {
+  getSubjectPerformance: (params: any) => api.get("/analytics/subject-performance", { params }),
+  getAttendanceTrend: (params: any) => api.get("/analytics/attendance-trend", { params }),
+  getAssignmentCompletion: (params?: any) => api.get("/analytics/assignment-completion", { params }),
+};
+
 export default api;

@@ -19,6 +19,7 @@ import messageRoutes from "./message.routes";
 import notificationRoutes from "./notification.routes";
 import libraryRoutes from "./library.routes";
 import admissionRoutes from "./admission.routes";
+import analyticsRoutes from "./analytics.routes";
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use("/messages", messageRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/library", libraryRoutes);
 router.use("/admissions", admissionRoutes);
+router.use("/analytics", analyticsRoutes);
 
 export default router;
