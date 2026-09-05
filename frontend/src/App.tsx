@@ -9,6 +9,7 @@ import { Apply } from "./pages/Apply";
 import { Dashboard } from "./pages/Dashboard";
 import { Students } from "./pages/Students";
 import { Teachers } from "./pages/Teachers";
+import { Parents } from "./pages/Parents";
 import { Classes } from "./pages/Classes";
 import { Subjects } from "./pages/Subjects";
 import { Sessions } from "./pages/Sessions";
@@ -53,6 +54,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/students" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Students /></ProtectedRoute>} />
         <Route path="/teachers" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL"]}><Teachers /></ProtectedRoute>} />
+        <Route path="/parents" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL"]}><Parents /></ProtectedRoute>} />
         <Route path="/classes" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Classes /></ProtectedRoute>} />
         <Route path="/subjects" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Subjects /></ProtectedRoute>} />
         <Route path="/sessions" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL"]}><Sessions /></ProtectedRoute>} />

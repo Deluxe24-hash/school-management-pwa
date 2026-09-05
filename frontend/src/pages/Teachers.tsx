@@ -18,17 +18,19 @@ interface TeacherForm {
   qualification: string;
   department: string;
   dateEmployed: string;
+  homeroomClassArmId: string;
 }
 
 const emptyForm: TeacherForm = {
   firstName: "", lastName: "", gender: "MALE", email: "", phone: "",
-  qualification: "", department: "", dateEmployed: "",
+  qualification: "", department: "", dateEmployed: "", homeroomClassArmId: "",
 };
 
 export const Teachers = () => {
   const { isAdmin } = useAuth();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [classArms, setClassArms] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
@@ -66,7 +68,11 @@ export const Teachers = () => {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    classApi.getAll().then((res) => setClasses(res.data.data)).catch(() => {});
+    classApi.getAll().then((res) => {
+      setClasses(res.data.data);
+      const arms = res.data.data.flatMap((c: any) => c.arms.map((a: any) => ({ ...a, class: c })));
+      setClassArms(arms);
+    }).catch(() => {});
     subjectApi.getAll().then((res) => setSubjects(res.data.data)).catch(() => {});
   }, []);
 
@@ -78,6 +84,7 @@ export const Teachers = () => {
   };
 
   const openEdit = (t: Teacher) => {
+    const currentHomeroom = classArms.find((a: any) => a.classTeacherId === t.id);
     setEditing(t);
     setForm({
       firstName: t.firstName,
@@ -87,6 +94,7 @@ export const Teachers = () => {
       phone: t.phone || "",
       qualification: t.qualification || "",
       department: t.department || "",
+      homeroomClassArmId: currentHomeroom?.id || "",
       dateEmployed: t.dateEmployed ? t.dateEmployed.slice(0, 10) : "",
     });
     setFormError(null);
@@ -101,12 +109,28 @@ export const Teachers = () => {
     setSaving(true);
     setFormError(null);
     try {
+      let teacherId = editing?.id;
+      const { homeroomClassArmId, ...teacherFields } = form;
       if (editing) {
-        const { email, ...rest } = form;
+        const { email, ...rest } = teacherFields;
         await teacherApi.update(editing.id, rest);
       } else {
-        await teacherApi.create(form);
+        const res = await teacherApi.create(teacherFields);
+        teacherId = res.data.data.id;
       }
+
+      // Sync homeroom (form teacher) assignment: clear any previous arm this teacher
+      // was set as form teacher of, then set the newly selected one (if any).
+      if (teacherId) {
+        const oldArm = classArms.find((a: any) => a.classTeacherId === teacherId && a.id !== homeroomClassArmId);
+        if (oldArm) await classApi.updateArm(oldArm.id, { classTeacherId: null });
+        if (homeroomClassArmId) await classApi.updateArm(homeroomClassArmId, { classTeacherId: teacherId });
+      }
+
+      const res = await classApi.getAll();
+      setClasses(res.data.data);
+      setClassArms(res.data.data.flatMap((c: any) => c.arms.map((a: any) => ({ ...a, class: c }))));
+
       setModalOpen(false);
       load();
     } catch (err: any) {
@@ -298,6 +322,18 @@ export const Teachers = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Date employed</label>
               <input type="date" className="input-field" value={form.dateEmployed} onChange={(e) => setForm({ ...form, dateEmployed: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2 pt-2 border-t border-gray-200 dark:border-gray-800">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Form Teacher Of (Homeroom Class)</label>
+              <select className="input-field" value={form.homeroomClassArmId} onChange={(e) => setForm({ ...form, homeroomClassArmId: e.target.value })}>
+                <option value="">None</option>
+                {classArms.map((a: any) => (
+                  <option key={a.id} value={a.id}>
+                    {a.fullName}{a.classTeacherId && a.classTeacherId !== editing?.id ? " (already has a form teacher)" : ""}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Only the form teacher of a class can mark its daily attendance.</p>
             </div>
           </div>
         </div>

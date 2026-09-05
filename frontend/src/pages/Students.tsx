@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Pencil, Trash2, GraduationCap } from "lucide-react";
-import { studentApi, classApi } from "../services/api";
+import { studentApi, classApi, parentApi } from "../services/api";
 import { Student, ClassArm } from "../types";
 import { useAuth } from "../hooks/useAuth";
 import { LoadingSpinner } from "../components/LoadingSpinner";
@@ -21,11 +21,12 @@ interface StudentForm {
   email: string;
   previousSchool: string;
   classArmId: string;
+  parentId: string;
 }
 
 const emptyForm: StudentForm = {
   firstName: "", lastName: "", middleName: "", gender: "MALE", dateOfBirth: "",
-  phone: "", address: "", email: "", previousSchool: "", classArmId: "",
+  phone: "", address: "", email: "", previousSchool: "", classArmId: "", parentId: "",
 };
 
 export const Students = () => {
@@ -43,6 +44,9 @@ export const Students = () => {
   const [form, setForm] = useState<StudentForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [parentQuery, setParentQuery] = useState("");
+  const [parentResults, setParentResults] = useState<any[]>([]);
+  const [selectedParent, setSelectedParent] = useState<any>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -76,6 +80,8 @@ export const Students = () => {
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    setSelectedParent(null);
+    setParentQuery("");
     setFormError(null);
     setModalOpen(true);
   };
@@ -93,9 +99,31 @@ export const Students = () => {
       email: "",
       previousSchool: student.previousSchool || "",
       classArmId: student.enrollments?.[0]?.classArm?.id || "",
+      parentId: (student as any).parentId || (student as any).parent?.id || "",
     });
+    setSelectedParent((student as any).parent || null);
+    setParentQuery("");
     setFormError(null);
     setModalOpen(true);
+  };
+
+  const searchParents = async (q: string) => {
+    setParentQuery(q);
+    if (q.length < 2) { setParentResults([]); return; }
+    const res = await parentApi.getAll({ search: q, limit: 10 });
+    setParentResults(res.data.data.parents);
+  };
+
+  const pickParent = (parent: any) => {
+    setSelectedParent(parent);
+    setForm((f) => ({ ...f, parentId: parent.id }));
+    setParentQuery("");
+    setParentResults([]);
+  };
+
+  const clearParent = () => {
+    setSelectedParent(null);
+    setForm((f) => ({ ...f, parentId: "" }));
   };
 
   const handleSave = async () => {
@@ -110,6 +138,7 @@ export const Students = () => {
       if (!payload.email) delete payload.email;
       if (!payload.dateOfBirth) delete payload.dateOfBirth;
       if (!payload.classArmId) delete payload.classArmId;
+      if (!payload.parentId) delete payload.parentId;
 
       if (editing) {
         await studentApi.update(editing.id, payload);
@@ -319,6 +348,29 @@ export const Students = () => {
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Previous school</label>
               <input className="input-field" value={form.previousSchool} onChange={(e) => setForm({ ...form, previousSchool: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2 pt-2 border-t border-gray-200 dark:border-gray-800">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Parent/Guardian</label>
+              {selectedParent ? (
+                <div className="flex items-center justify-between px-3 py-2 rounded-md border border-gray-200 dark:border-gray-800">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{selectedParent.firstName} {selectedParent.lastName}</span>
+                  <button onClick={clearParent} className="text-xs text-gray-400 hover:text-red-600">Remove</button>
+                </div>
+              ) : (
+                <>
+                  <input className="input-field" placeholder="Search parents by name or phone..." value={parentQuery} onChange={(e) => searchParents(e.target.value)} />
+                  {parentResults.length > 0 && (
+                    <div className="mt-1.5 border border-gray-200 dark:border-gray-800 rounded-md divide-y divide-gray-100 dark:divide-gray-800 max-h-40 overflow-y-auto">
+                      {parentResults.map((p) => (
+                        <button key={p.id} onClick={() => pickParent(p)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5">
+                          {p.firstName} {p.lastName} · {p.phone}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">No parent yet? Add them first from the Parents page.</p>
+                </>
+              )}
             </div>
           </div>
         </div>

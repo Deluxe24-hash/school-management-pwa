@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, GraduationCap, School, BookOpen,
   Calendar, ClipboardCheck, FileText, CreditCard, ClipboardList,
   Megaphone, Settings, ChevronLeft, ChevronRight, School as SchoolIcon,
-  Clock, FileBadge, MessageSquare, Library, UserPlus, BarChart3,
+  Clock, FileBadge, MessageSquare, Library, UserPlus, BarChart3, UserCheck,
 } from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
@@ -12,6 +12,7 @@ const menuItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: [] },
   { path: "/students", label: "Students", icon: Users, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/teachers", label: "Teachers", icon: GraduationCap, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"] },
+  { path: "/parents", label: "Parents", icon: UserCheck, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"] },
   { path: "/classes", label: "Classes", icon: School, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/subjects", label: "Subjects", icon: BookOpen, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/sessions", label: "Sessions", icon: Calendar, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"] },

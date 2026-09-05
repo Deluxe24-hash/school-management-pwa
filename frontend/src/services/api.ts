@@ -67,6 +67,15 @@ export const teacherApi = {
   assignSubject: (data: any) => api.post("/teachers/assign-subject", data),
 };
 
+// Parent APIs
+export const parentApi = {
+  getAll: (params?: any) => api.get("/parents", { params }),
+  getById: (id: string) => api.get(`/parents/${id}`),
+  create: (data: any) => api.post("/parents", data),
+  update: (id: string, data: any) => api.put(`/parents/${id}`, data),
+  delete: (id: string) => api.delete(`/parents/${id}`),
+};
+
 // Class APIs
 export const classApi = {
   getAll: () => api.get("/classes"),
