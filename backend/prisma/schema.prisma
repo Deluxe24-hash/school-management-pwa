@@ -241,6 +241,7 @@ model ClassArm {
 
   enrollments StudentEnrollment[]
   timetables  Timetable[]
+  assignments Assignment[]
 
   @@unique([classId, name])
   @@map("class_arms")
@@ -603,6 +604,7 @@ model Assignment {
   subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   classArmId  String
+  classArm    ClassArm @relation(fields: [classArmId], references: [id], onDelete: Cascade)
 
   sessionId   String
   session     AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
