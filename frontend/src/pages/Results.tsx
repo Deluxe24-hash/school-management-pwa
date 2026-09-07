@@ -1,12 +1,16 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Save } from "lucide-react";
-import { resultApi, classApi, subjectApi, studentApi, sessionApi, settingApi } from "../services/api";
+import { resultApi, classApi, subjectApi, studentApi, sessionApi } from "../services/api";
 import { ClassArm, Subject, Student } from "../types";
 import { useAuth } from "../hooks/useAuth";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { EmptyState } from "../components/EmptyState";
 
-interface ScoreEntry { ca1: string; ca2: string; project: string; exam: string; existingId?: string; grade?: string; locked?: boolean; }
+interface ScoreEntry { classEval: string; homeTask: string; exam: string; existingId?: string; grade?: string; locked?: boolean; }
+
+const MAX_CLASS_EVAL = 30;
+const MAX_HOME_TASK = 10;
+const MAX_EXAM = 60;
 
 export const Results = () => {
   const { user, isAdmin } = useAuth();
@@ -17,7 +21,6 @@ export const Results = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [scores, setScores] = useState<Record<string, ScoreEntry>>({});
   const [sessionInfo, setSessionInfo] = useState<{ sessionId: string; termId: string } | null>(null);
-  const [weights, setWeights] = useState({ caWeight: 40, examWeight: 60 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -28,19 +31,12 @@ export const Results = () => {
   const myClassSubjects = user?.teacher?.classSubjects || [];
   const myFormClassIds = new Set((user?.teacher?.classArms || []).map((a: any) => a.class?.id).filter(Boolean));
 
+  // Class Evaluation (30%) + Home Task (10%) + Exams (60%) — each field's max IS its weight,
+  // so Total is always a straight sum out of 100, no separate percentage math needed.
   const computeTotal = (entry: ScoreEntry) => {
-    const ca = (Number(entry.ca1) || 0) + (Number(entry.ca2) || 0) + (Number(entry.project) || 0);
-    const exam = Number(entry.exam) || 0;
-    if (entry.ca1 === "" && entry.ca2 === "" && entry.project === "" && entry.exam === "") return null;
-    return (ca * weights.caWeight) / 100 + (exam * weights.examWeight) / 100;
+    if (entry.classEval === "" && entry.homeTask === "" && entry.exam === "") return null;
+    return (Number(entry.classEval) || 0) + (Number(entry.homeTask) || 0) + (Number(entry.exam) || 0);
   };
-
-  useEffect(() => {
-    settingApi.get().then((res) => {
-      const s = res.data.data;
-      if (s?.caWeight) setWeights({ caWeight: s.caWeight, examWeight: s.examWeight });
-    }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     classApi.getAll().then((res) => {
@@ -96,15 +92,14 @@ export const Results = () => {
           const r = existing.find((x: any) => x.studentId === s.id);
           map[s.id] = r
             ? {
-                ca1: r.ca1Score?.toString() ?? "",
-                ca2: r.ca2Score?.toString() ?? "",
-                project: r.projectScore?.toString() ?? "",
+                classEval: r.ca1Score?.toString() ?? "",
+                homeTask: r.ca2Score?.toString() ?? "",
                 exam: r.examScore?.toString() ?? "",
                 existingId: r.id,
                 grade: r.grade,
                 locked: r.isLocked,
               }
-            : { ca1: "", ca2: "", project: "", exam: "" };
+            : { classEval: "", homeTask: "", exam: "" };
         });
         setScores(map);
       })
@@ -121,7 +116,7 @@ export const Results = () => {
     try {
       const entries = students.filter((s) => {
         const e = scores[s.id];
-        return e && (e.ca1 !== "" || e.ca2 !== "" || e.project !== "" || e.exam !== "");
+        return e && (e.classEval !== "" || e.homeTask !== "" || e.exam !== "");
       });
       for (const s of entries) {
         const entry = scores[s.id];
@@ -132,9 +127,8 @@ export const Results = () => {
           classArmId,
           sessionId: sessionInfo.sessionId,
           termId: sessionInfo.termId,
-          ca1Score: entry.ca1 === "" ? undefined : Number(entry.ca1),
-          ca2Score: entry.ca2 === "" ? undefined : Number(entry.ca2),
-          projectScore: entry.project === "" ? undefined : Number(entry.project),
+          ca1Score: entry.classEval === "" ? undefined : Number(entry.classEval),
+          ca2Score: entry.homeTask === "" ? undefined : Number(entry.homeTask),
           examScore: entry.exam === "" ? undefined : Number(entry.exam),
         });
       }
@@ -154,7 +148,7 @@ export const Results = () => {
       <div>
         <h2 className="text-2xl font-serif font-semibold text-primary-900 dark:text-white">Results</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Enter CA1, CA2, Project, and Exam scores — Total is CA {weights.caWeight}% + Exam {weights.examWeight}%
+          Class Evaluation 30% + Home Task 10% + Exams 60% = Total 100%
         </p>
       </div>
 
@@ -194,17 +188,16 @@ export const Results = () => {
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-800 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                       <th className="px-4 py-3 font-medium">Student</th>
-                      <th className="px-3 py-3 font-medium w-20">CA1</th>
-                      <th className="px-3 py-3 font-medium w-20">CA2</th>
-                      <th className="px-3 py-3 font-medium w-20">Project</th>
-                      <th className="px-3 py-3 font-medium w-20">Exam</th>
-                      <th className="px-3 py-3 font-medium w-20">Total</th>
+                      <th className="px-3 py-3 font-medium w-28">Class Eval. (30%)</th>
+                      <th className="px-3 py-3 font-medium w-28">Home Task (10%)</th>
+                      <th className="px-3 py-3 font-medium w-24">Exams (60%)</th>
+                      <th className="px-3 py-3 font-medium w-24">Total (100%)</th>
                       <th className="px-3 py-3 font-medium w-16">Grade</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {students.map((s) => {
-                      const entry = scores[s.id] || { ca1: "", ca2: "", project: "", exam: "" };
+                      const entry = scores[s.id] || { classEval: "", homeTask: "", exam: "" };
                       return (
                         <tr key={s.id}>
                           <td className="px-4 py-2.5">
@@ -212,23 +205,19 @@ export const Results = () => {
                             <p className="text-xs text-gray-500 dark:text-gray-400">{s.admissionNumber}</p>
                           </td>
                           <td className="px-3 py-2.5">
-                            <input type="number" min={0} className="input-field py-1.5" value={entry.ca1} disabled={entry.locked}
-                              onChange={(e) => setScores({ ...scores, [s.id]: { ...entry, ca1: e.target.value } })} />
+                            <input type="number" min={0} max={MAX_CLASS_EVAL} className="input-field py-1.5" value={entry.classEval} disabled={entry.locked}
+                              onChange={(e) => setScores({ ...scores, [s.id]: { ...entry, classEval: e.target.value } })} />
                           </td>
                           <td className="px-3 py-2.5">
-                            <input type="number" min={0} className="input-field py-1.5" value={entry.ca2} disabled={entry.locked}
-                              onChange={(e) => setScores({ ...scores, [s.id]: { ...entry, ca2: e.target.value } })} />
+                            <input type="number" min={0} max={MAX_HOME_TASK} className="input-field py-1.5" value={entry.homeTask} disabled={entry.locked}
+                              onChange={(e) => setScores({ ...scores, [s.id]: { ...entry, homeTask: e.target.value } })} />
                           </td>
                           <td className="px-3 py-2.5">
-                            <input type="number" min={0} className="input-field py-1.5" value={entry.project} disabled={entry.locked}
-                              onChange={(e) => setScores({ ...scores, [s.id]: { ...entry, project: e.target.value } })} />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <input type="number" min={0} max={60} className="input-field py-1.5" value={entry.exam} disabled={entry.locked}
+                            <input type="number" min={0} max={MAX_EXAM} className="input-field py-1.5" value={entry.exam} disabled={entry.locked}
                               onChange={(e) => setScores({ ...scores, [s.id]: { ...entry, exam: e.target.value } })} />
                           </td>
                           <td className="px-3 py-2.5 font-medium text-gray-900 dark:text-white">
-                            {computeTotal(entry) !== null ? computeTotal(entry)!.toFixed(1) : "—"}
+                            {computeTotal(entry) !== null ? computeTotal(entry) : "—"}
                           </td>
                           <td className="px-3 py-2.5 font-medium text-gray-700 dark:text-gray-300">{entry.grade || "—"}</td>
                         </tr>

@@ -61,7 +61,9 @@ export const getStudentResults = async (req: Request, res: Response) => {
 
 export const enterResult = async (req: Request, res: Response) => {
   try {
-    const { studentId, subjectId, classArmId, sessionId, termId, ca1Score, ca2Score, projectScore, examScore } = req.body;
+    const { studentId, subjectId, classArmId, sessionId, termId, ca1Score, ca2Score, examScore } = req.body;
+    // ca1Score = Class Evaluation (out of 30), ca2Score = Home Task (out of 10), examScore = Exams (out of 60).
+    // These three already sum to 100 by their max caps, so Total is a straight sum — no percentage weighting needed.
 
     const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
 
@@ -93,16 +95,12 @@ export const enterResult = async (req: Request, res: Response) => {
     }
 
     const settings = await prisma.schoolSetting.findFirst();
-    const caWeight = settings?.caWeight || 40;
-    const examWeight = settings?.examWeight || 60;
 
-    const resolvedCa1 = ca1Score ?? existing?.ca1Score ?? 0;
-    const resolvedCa2 = ca2Score ?? existing?.ca2Score ?? 0;
-    const resolvedProject = projectScore ?? existing?.projectScore ?? 0;
-    const caScore = resolvedCa1 + resolvedCa2 + resolvedProject;
+    const resolvedClassEval = ca1Score ?? existing?.ca1Score ?? 0;
+    const resolvedHomeTask = ca2Score ?? existing?.ca2Score ?? 0;
     const resolvedExam = examScore ?? existing?.examScore ?? 0;
-
-    const totalScore = (caScore * caWeight / 100) + (resolvedExam * examWeight / 100);
+    const caScore = resolvedClassEval + resolvedHomeTask;
+    const totalScore = resolvedClassEval + resolvedHomeTask + resolvedExam;
 
     let grade = null;
     let gradePoint = null;
@@ -135,9 +133,8 @@ export const enterResult = async (req: Request, res: Response) => {
         },
       },
       update: {
-        ca1Score: resolvedCa1,
-        ca2Score: resolvedCa2,
-        projectScore: resolvedProject,
+        ca1Score: resolvedClassEval,
+        ca2Score: resolvedHomeTask,
         caScore,
         examScore: resolvedExam,
         totalScore,
@@ -146,9 +143,8 @@ export const enterResult = async (req: Request, res: Response) => {
         teacherId,
       },
       create: {
-        ca1Score: resolvedCa1,
-        ca2Score: resolvedCa2,
-        projectScore: resolvedProject,
+        ca1Score: resolvedClassEval,
+        ca2Score: resolvedHomeTask,
         caScore,
         examScore: resolvedExam,
         totalScore,

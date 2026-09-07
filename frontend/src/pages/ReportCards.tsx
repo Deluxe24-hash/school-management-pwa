@@ -138,11 +138,10 @@ export const ReportCards = () => {
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-800 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 <th className="py-2">Subject</th>
-                <th className="py-2 text-center">CA1</th>
-                <th className="py-2 text-center">CA2</th>
-                <th className="py-2 text-center">Project</th>
-                <th className="py-2 text-center">Exam</th>
-                <th className="py-2 text-center">Total</th>
+                <th className="py-2 text-center">Class Eval. (30%)</th>
+                <th className="py-2 text-center">Home Task (10%)</th>
+                <th className="py-2 text-center">Exams (60%)</th>
+                <th className="py-2 text-center">Total (100%)</th>
                 <th className="py-2 text-center">Grade</th>
               </tr>
             </thead>
@@ -152,7 +151,6 @@ export const ReportCards = () => {
                   <td className="py-2 font-medium text-gray-900 dark:text-white">{r.subject?.name}</td>
                   <td className="py-2 text-center">{r.ca1Score ?? "—"}</td>
                   <td className="py-2 text-center">{r.ca2Score ?? "—"}</td>
-                  <td className="py-2 text-center">{r.projectScore ?? "—"}</td>
                   <td className="py-2 text-center">{r.examScore ?? "—"}</td>
                   <td className="py-2 text-center font-medium">{r.totalScore?.toFixed(1) ?? "—"}</td>
                   <td className="py-2 text-center font-medium">{r.grade ?? "—"}</td>
