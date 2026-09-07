@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Save } from "lucide-react";
-import { resultApi, classApi, subjectApi, studentApi, sessionApi } from "../services/api";
+import { resultApi, classApi, subjectApi, studentApi, sessionApi, settingApi } from "../services/api";
 import { ClassArm, Subject, Student } from "../types";
 import { useAuth } from "../hooks/useAuth";
 import { LoadingSpinner } from "../components/LoadingSpinner";
@@ -17,6 +17,7 @@ export const Results = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [scores, setScores] = useState<Record<string, ScoreEntry>>({});
   const [sessionInfo, setSessionInfo] = useState<{ sessionId: string; termId: string } | null>(null);
+  const [weights, setWeights] = useState({ caWeight: 40, examWeight: 60 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -26,6 +27,20 @@ export const Results = () => {
   // plus every subject in classes I'm the form teacher of (form teachers can enter any subject there).
   const myClassSubjects = user?.teacher?.classSubjects || [];
   const myFormClassIds = new Set((user?.teacher?.classArms || []).map((a: any) => a.class?.id).filter(Boolean));
+
+  const computeTotal = (entry: ScoreEntry) => {
+    const ca = (Number(entry.ca1) || 0) + (Number(entry.ca2) || 0) + (Number(entry.project) || 0);
+    const exam = Number(entry.exam) || 0;
+    if (entry.ca1 === "" && entry.ca2 === "" && entry.project === "" && entry.exam === "") return null;
+    return (ca * weights.caWeight) / 100 + (exam * weights.examWeight) / 100;
+  };
+
+  useEffect(() => {
+    settingApi.get().then((res) => {
+      const s = res.data.data;
+      if (s?.caWeight) setWeights({ caWeight: s.caWeight, examWeight: s.examWeight });
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     classApi.getAll().then((res) => {
@@ -138,7 +153,9 @@ export const Results = () => {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h2 className="text-2xl font-serif font-semibold text-primary-900 dark:text-white">Results</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter CA1, CA2, Project, and Exam scores</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Enter CA1, CA2, Project, and Exam scores — Total is CA {weights.caWeight}% + Exam {weights.examWeight}%
+        </p>
       </div>
 
       {noAccessAtAll ? (
@@ -181,6 +198,7 @@ export const Results = () => {
                       <th className="px-3 py-3 font-medium w-20">CA2</th>
                       <th className="px-3 py-3 font-medium w-20">Project</th>
                       <th className="px-3 py-3 font-medium w-20">Exam</th>
+                      <th className="px-3 py-3 font-medium w-20">Total</th>
                       <th className="px-3 py-3 font-medium w-16">Grade</th>
                     </tr>
                   </thead>
@@ -208,6 +226,9 @@ export const Results = () => {
                           <td className="px-3 py-2.5">
                             <input type="number" min={0} max={60} className="input-field py-1.5" value={entry.exam} disabled={entry.locked}
                               onChange={(e) => setScores({ ...scores, [s.id]: { ...entry, exam: e.target.value } })} />
+                          </td>
+                          <td className="px-3 py-2.5 font-medium text-gray-900 dark:text-white">
+                            {computeTotal(entry) !== null ? computeTotal(entry)!.toFixed(1) : "—"}
                           </td>
                           <td className="px-3 py-2.5 font-medium text-gray-700 dark:text-gray-300">{entry.grade || "—"}</td>
                         </tr>
