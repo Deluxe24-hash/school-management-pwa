@@ -185,6 +185,8 @@ export const timetableApi = {
 export const reportCardApi = {
   get: (params: any) => api.get("/report-cards", { params }),
   generate: (data: any) => api.post("/report-cards/generate", data),
+  publish: (data: any) => api.post("/report-cards/publish", data),
+  unpublish: (data: any) => api.post("/report-cards/unpublish", data),
 };
 
 // Message APIs

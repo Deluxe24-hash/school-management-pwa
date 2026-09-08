@@ -157,6 +157,7 @@ const ParentDashboard = ({ greetingName }: { greetingName: string }) => {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <QuickLink to="/report-cards" icon={BookOpen} label="Report Cards" />
         <QuickLink to="/announcements" icon={Megaphone} label="Announcements" />
       </div>
     </div>
@@ -181,6 +182,7 @@ const StudentDashboard = ({ greetingName }: { greetingName: string }) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <QuickLink to="/assignments" icon={ClipboardList} label="My Assignments" />
+        <QuickLink to="/report-cards" icon={BookOpen} label="Report Card" />
         <QuickLink to="/announcements" icon={Megaphone} label="Announcements" />
       </div>
     </div>

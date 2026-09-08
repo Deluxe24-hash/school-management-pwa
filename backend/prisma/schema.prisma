@@ -514,6 +514,10 @@ model ReportCard {
   principalRemark   String?
   nextTermBegins    DateTime?
 
+  isPublished       Boolean  @default(false)
+  publishedAt       DateTime?
+  publishedBy       String?
+
   generatedAt       DateTime @default(now())
 
   @@unique([studentId, sessionId, termId])

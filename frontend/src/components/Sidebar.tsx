@@ -19,7 +19,7 @@ const menuItems = [
   { path: "/timetable", label: "Timetable", icon: Clock, roles: [] },
   { path: "/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/results", label: "Results", icon: FileText, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
-  { path: "/report-cards", label: "Report Cards", icon: FileBadge, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
+  { path: "/report-cards", label: "Report Cards", icon: FileBadge, roles: [] },
   { path: "/performance", label: "Performance", icon: BarChart3, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/fees", label: "Fees", icon: CreditCard, roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT"] },
   { path: "/library", label: "Library", icon: Library, roles: [] },

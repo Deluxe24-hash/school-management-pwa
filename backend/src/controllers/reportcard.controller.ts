@@ -65,7 +65,28 @@ export const generateReportCard = async (req: Request, res: Response) => {
 
 export const getReportCard = async (req: Request, res: Response) => {
   try {
-    const { studentId, sessionId, termId } = req.query;
+    let { studentId } = req.query;
+    const { sessionId, termId } = req.query;
+    const role = req.user!.role;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"].includes(role);
+
+    // Students can only ever view their own report card.
+    if (role === "STUDENT") {
+      studentId = req.user!.student?.id;
+      if (!studentId) return errorResponse(res, "No student record linked to your account.", 403);
+    }
+
+    // Parents can only view a report card for one of their own linked children.
+    if (role === "PARENT") {
+      const parent = await prisma.parent.findUnique({
+        where: { id: req.user!.parent?.id },
+        select: { children: { select: { id: true } } },
+      });
+      const allowedIds = new Set((parent?.children || []).map((c) => c.id));
+      if (!studentId || !allowedIds.has(studentId as string)) {
+        return errorResponse(res, "You can only view report cards for your own children.", 403);
+      }
+    }
 
     const reportCard = await prisma.reportCard.findUnique({
       where: {
@@ -77,6 +98,11 @@ export const getReportCard = async (req: Request, res: Response) => {
       },
     });
     if (!reportCard) return errorResponse(res, "No report card generated yet for this term.", 404);
+
+    // Parents and students may only see a report card once it's been published by an admin.
+    if (!isAdminTier && !reportCard.isPublished) {
+      return errorResponse(res, "This report card hasn't been published yet.", 403);
+    }
 
     const student = await prisma.student.findUnique({
       where: { id: studentId as string },
@@ -90,5 +116,29 @@ export const getReportCard = async (req: Request, res: Response) => {
     });
 
     return successResponse(res, { reportCard, student, results });
+  } catch (error) { throw error; }
+};
+
+export const publishReportCard = async (req: Request, res: Response) => {
+  try {
+    const { studentId, sessionId, termId } = req.body;
+    const reportCard = await prisma.reportCard.update({
+      where: { studentId_sessionId_termId: { studentId, sessionId, termId } },
+      data: { isPublished: true, publishedAt: new Date(), publishedBy: req.user!.id },
+    });
+    await logAudit("PUBLISH", "report_cards", reportCard.id, req.user!.id, null, { studentId }, req.ip, req.get("user-agent"));
+    return successResponse(res, reportCard, "Report card published — parents and the student can now view it.");
+  } catch (error) { throw error; }
+};
+
+export const unpublishReportCard = async (req: Request, res: Response) => {
+  try {
+    const { studentId, sessionId, termId } = req.body;
+    const reportCard = await prisma.reportCard.update({
+      where: { studentId_sessionId_termId: { studentId, sessionId, termId } },
+      data: { isPublished: false, publishedAt: null, publishedBy: null },
+    });
+    await logAudit("UNPUBLISH", "report_cards", reportCard.id, req.user!.id, null, { studentId }, req.ip, req.get("user-agent"));
+    return successResponse(res, reportCard, "Report card unpublished.");
   } catch (error) { throw error; }
 };
