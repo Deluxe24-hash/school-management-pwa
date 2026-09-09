@@ -50,6 +50,7 @@ export const Students = () => {
 
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const limit = 20;
 
@@ -83,6 +84,7 @@ export const Students = () => {
     setSelectedParent(null);
     setParentQuery("");
     setFormError(null);
+    setCredentials(null);
     setModalOpen(true);
   };
 
@@ -104,6 +106,7 @@ export const Students = () => {
     setSelectedParent((student as any).parent || null);
     setParentQuery("");
     setFormError(null);
+    setCredentials(null);
     setModalOpen(true);
   };
 
@@ -142,10 +145,11 @@ export const Students = () => {
 
       if (editing) {
         await studentApi.update(editing.id, payload);
+        setModalOpen(false);
       } else {
-        await studentApi.create(payload);
+        const res = await studentApi.create(payload);
+        setCredentials({ email: res.data.data.user?.email || form.email, password: "Student@123" });
       }
-      setModalOpen(false);
       load();
     } catch (err: any) {
       setFormError(err?.message || "Couldn't save student.");
@@ -281,18 +285,53 @@ export const Students = () => {
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editing ? "Edit Student" : "Add Student"}
+        onClose={() => { setModalOpen(false); setCredentials(null); }}
+        title={credentials ? "Student Added" : editing ? "Edit Student" : "Add Student"}
         size="lg"
         footer={
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setModalOpen(false)} className="btn-secondary">Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="btn-primary">
-              {saving ? "Saving..." : editing ? "Save Changes" : "Add Student"}
-            </button>
-          </div>
+          credentials ? (
+            <div className="flex justify-end">
+              <button onClick={() => { setModalOpen(false); setCredentials(null); }} className="btn-primary">Done</button>
+            </div>
+          ) : (
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setModalOpen(false)} className="btn-secondary">Cancel</button>
+              <button onClick={handleSave} disabled={saving} className="btn-primary">
+                {saving ? "Saving..." : editing ? "Save Changes" : "Add Student"}
+              </button>
+            </div>
+          )
         }
       >
+        {credentials ? (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Share these login details with the student (or their parent) — they should change the password after signing in.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Email</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-md bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-white">{credentials.email}</code>
+                  <button onClick={() => navigator.clipboard?.writeText(credentials.email)} className="btn-secondary text-xs py-2">Copy</button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Temporary Password</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-md bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-white">{credentials.password}</code>
+                  <button onClick={() => navigator.clipboard?.writeText(credentials.password)} className="btn-secondary text-xs py-2">Copy</button>
+                </div>
+              </div>
+              <button
+                onClick={() => navigator.clipboard?.writeText(`Email: ${credentials.email}\nPassword: ${credentials.password}`)}
+                className="btn-secondary text-xs w-full"
+              >
+                Copy Both
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-4">
           {formError && (
             <div className="px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
@@ -374,6 +413,7 @@ export const Students = () => {
             </div>
           </div>
         </div>
+        )}
       </Modal>
 
       <ConfirmDialog

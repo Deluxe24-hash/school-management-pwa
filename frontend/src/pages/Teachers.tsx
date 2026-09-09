@@ -45,6 +45,7 @@ export const Teachers = () => {
 
   const [deleteTarget, setDeleteTarget] = useState<Teacher | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [assignTeacher, setAssignTeacher] = useState<Teacher | null>(null);
@@ -80,6 +81,7 @@ export const Teachers = () => {
     setEditing(null);
     setForm(emptyForm);
     setFormError(null);
+    setCredentials(null);
     setModalOpen(true);
   };
 
@@ -98,6 +100,7 @@ export const Teachers = () => {
       dateEmployed: t.dateEmployed ? t.dateEmployed.slice(0, 10) : "",
     });
     setFormError(null);
+    setCredentials(null);
     setModalOpen(true);
   };
 
@@ -117,6 +120,7 @@ export const Teachers = () => {
       } else {
         const res = await teacherApi.create(teacherFields);
         teacherId = res.data.data.id;
+        setCredentials({ email: res.data.data.user?.email || teacherFields.email, password: "Teacher@123" });
       }
 
       // Sync homeroom (form teacher) assignment: clear any previous arm this teacher
@@ -131,7 +135,7 @@ export const Teachers = () => {
       setClasses(res.data.data);
       setClassArms(res.data.data.flatMap((c: any) => c.arms.map((a: any) => ({ ...a, class: c }))));
 
-      setModalOpen(false);
+      if (editing) setModalOpen(false);
       load();
     } catch (err: any) {
       setFormError(err?.message || "Couldn't save teacher.");
@@ -263,18 +267,53 @@ export const Teachers = () => {
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editing ? "Edit Teacher" : "Add Teacher"}
+        onClose={() => { setModalOpen(false); setCredentials(null); }}
+        title={credentials ? "Teacher Added" : editing ? "Edit Teacher" : "Add Teacher"}
         size="lg"
         footer={
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setModalOpen(false)} className="btn-secondary">Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="btn-primary">
-              {saving ? "Saving..." : editing ? "Save Changes" : "Add Teacher"}
-            </button>
-          </div>
+          credentials ? (
+            <div className="flex justify-end">
+              <button onClick={() => { setModalOpen(false); setCredentials(null); }} className="btn-primary">Done</button>
+            </div>
+          ) : (
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setModalOpen(false)} className="btn-secondary">Cancel</button>
+              <button onClick={handleSave} disabled={saving} className="btn-primary">
+                {saving ? "Saving..." : editing ? "Save Changes" : "Add Teacher"}
+              </button>
+            </div>
+          )
         }
       >
+        {credentials ? (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Share these login details with the teacher — they should change the password after signing in.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Email</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-md bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-white">{credentials.email}</code>
+                  <button onClick={() => navigator.clipboard?.writeText(credentials.email)} className="btn-secondary text-xs py-2">Copy</button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Temporary Password</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-md bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-white">{credentials.password}</code>
+                  <button onClick={() => navigator.clipboard?.writeText(credentials.password)} className="btn-secondary text-xs py-2">Copy</button>
+                </div>
+              </div>
+              <button
+                onClick={() => navigator.clipboard?.writeText(`Email: ${credentials.email}\nPassword: ${credentials.password}`)}
+                className="btn-secondary text-xs w-full"
+              >
+                Copy Both
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-4">
           {formError && (
             <div className="px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
@@ -337,6 +376,7 @@ export const Teachers = () => {
             </div>
           </div>
         </div>
+        )}
       </Modal>
 
       <Modal
