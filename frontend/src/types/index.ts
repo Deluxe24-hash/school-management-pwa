@@ -226,6 +226,9 @@ export interface Payment {
   gateway?: string;
   gatewayRef?: string;
   status: "PENDING" | "SUCCESSFUL" | "FAILED" | "CANCELLED";
+  method?: "PAYSTACK" | "BANK_TRANSFER" | "CASH_DEPOSIT";
+  receiptData?: string;
+  submittedNote?: string;
   paidAt?: string;
   studentId: string;
   feeId: string;

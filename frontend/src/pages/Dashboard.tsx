@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, GraduationCap, UserCheck, School, BookOpen, CalendarCheck, ClipboardList, Megaphone, ChevronRight } from "lucide-react";
+import { Users, GraduationCap, UserCheck, School, BookOpen, CalendarCheck, ClipboardList, Megaphone, ChevronRight, Receipt } from "lucide-react";
 import { reportApi } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { getUserDisplayName } from "../utils/helpers";
@@ -158,6 +158,7 @@ const ParentDashboard = ({ greetingName }: { greetingName: string }) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <QuickLink to="/report-cards" icon={BookOpen} label="Report Cards" />
+        <QuickLink to="/fees" icon={Receipt} label="Fees & Payments" />
         <QuickLink to="/announcements" icon={Megaphone} label="Announcements" />
       </div>
     </div>
@@ -183,6 +184,7 @@ const StudentDashboard = ({ greetingName }: { greetingName: string }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <QuickLink to="/assignments" icon={ClipboardList} label="My Assignments" />
         <QuickLink to="/report-cards" icon={BookOpen} label="Report Card" />
+        <QuickLink to="/fees" icon={Receipt} label="My Fees" />
         <QuickLink to="/announcements" icon={Megaphone} label="Announcements" />
       </div>
     </div>

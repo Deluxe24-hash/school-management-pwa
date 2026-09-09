@@ -77,6 +77,22 @@ export const getStudentFees = async (req: Request, res: Response) => {
     const { studentId } = req.params;
     const { sessionId, termId } = req.query;
 
+    // Parents/students may only view fee info for their own linked child (or themselves).
+    const role = req.user!.role;
+    if (role === "STUDENT" && req.user!.student?.id !== studentId) {
+      return errorResponse(res, "You can only view your own fees.", 403);
+    }
+    if (role === "PARENT") {
+      const parent = await prisma.parent.findUnique({
+        where: { id: req.user!.parent?.id },
+        select: { children: { select: { id: true } } },
+      });
+      const allowedIds = new Set((parent?.children || []).map((c) => c.id));
+      if (!allowedIds.has(studentId)) {
+        return errorResponse(res, "You can only view fees for your own children.", 403);
+      }
+    }
+
     const where: any = { studentId };
     if (sessionId) where.sessionId = sessionId as string;
     if (termId) where.termId = termId as string;

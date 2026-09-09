@@ -63,7 +63,7 @@ function App() {
         <Route path="/results" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Results /></ProtectedRoute>} />
         <Route path="/report-cards" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER", "PARENT", "STUDENT"]}><ReportCards /></ProtectedRoute>} />
         <Route path="/performance" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"]}><Suspense fallback={<div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>}><Performance /></Suspense></ProtectedRoute>} />
-        <Route path="/fees" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "ACCOUNTANT"]}><Fees /></ProtectedRoute>} />
+        <Route path="/fees" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "ACCOUNTANT", "PARENT", "STUDENT"]}><Fees /></ProtectedRoute>} />
         <Route path="/library" element={<Library />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/admissions" element={<ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN", "PRINCIPAL"]}><Admissions /></ProtectedRoute>} />

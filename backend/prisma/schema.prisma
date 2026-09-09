@@ -68,6 +68,12 @@ enum PaymentStatus {
   CANCELLED
 }
 
+enum PaymentMethod {
+  PAYSTACK
+  BANK_TRANSFER
+  CASH_DEPOSIT
+}
+
 enum NotificationType {
   ANNOUNCEMENT
   FEE_REMINDER
@@ -574,6 +580,10 @@ model Payment {
   gatewayRef    String?
   status        PaymentStatus @default(PENDING)
   paidAt        DateTime?
+
+  method        PaymentMethod @default(PAYSTACK)
+  receiptData   String?  // base64-encoded receipt image for manual bank transfer/cash deposit payments
+  submittedNote String?  // parent's note, e.g. transaction reference or bank name
 
   studentId     String
   student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)

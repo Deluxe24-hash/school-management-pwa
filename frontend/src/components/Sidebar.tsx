@@ -21,7 +21,7 @@ const menuItems = [
   { path: "/results", label: "Results", icon: FileText, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
   { path: "/report-cards", label: "Report Cards", icon: FileBadge, roles: [] },
   { path: "/performance", label: "Performance", icon: BarChart3, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"] },
-  { path: "/fees", label: "Fees", icon: CreditCard, roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT"] },
+  { path: "/fees", label: "Fees", icon: CreditCard, roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT", "PARENT", "STUDENT"] },
   { path: "/library", label: "Library", icon: Library, roles: [] },
   { path: "/messages", label: "Messages", icon: MessageSquare, roles: [] },
   { path: "/admissions", label: "Admissions", icon: UserPlus, roles: ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"] },
