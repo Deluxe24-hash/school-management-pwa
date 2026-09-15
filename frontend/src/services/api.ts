@@ -146,6 +146,10 @@ export const assignmentApi = {
   getAll: (params?: any) => api.get("/assignments", { params }),
   getById: (id: string) => api.get(`/assignments/${id}`),
   create: (data: any) => api.post("/assignments", data),
+  update: (id: string, data: any) => api.put(`/assignments/${id}`, data),
+  delete: (id: string) => api.delete(`/assignments/${id}`),
+  publish: (id: string) => api.post(`/assignments/${id}/publish`),
+  unpublish: (id: string) => api.post(`/assignments/${id}/unpublish`),
   submit: (data: any) => api.post("/assignments/submit", data),
   grade: (data: any) => api.post("/assignments/grade", data),
 };

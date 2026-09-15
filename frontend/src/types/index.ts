@@ -254,6 +254,9 @@ export interface Assignment {
   teacher?: Teacher;
   submissions?: Submission[];
   _count?: { submissions: number };
+  isPublished?: boolean;
+  publishedAt?: string;
+  publishedBy?: string;
 }
 
 export interface Submission {

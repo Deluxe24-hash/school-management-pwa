@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, ClipboardList, CheckCircle2 } from "lucide-react";
+import { Plus, ClipboardList, CheckCircle2, Pencil, Trash2, Send, Undo2, Clock } from "lucide-react";
 import { assignmentApi, classApi, subjectApi, sessionApi } from "../services/api";
 import { Assignment, ClassArm, Subject } from "../types";
 import { useAuth } from "../hooks/useAuth";
@@ -15,7 +15,7 @@ interface AssignmentForm {
 const emptyForm: AssignmentForm = { title: "", description: "", type: "HOMEWORK", maxScore: "100", dueDate: "", subjectId: "", classArmId: "" };
 
 export const Assignments = () => {
-  const { isTeacher } = useAuth();
+  const { isTeacher, isAdmin } = useAuth();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [classArms, setClassArms] = useState<ClassArm[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -24,9 +24,11 @@ export const Assignments = () => {
   const [sessionInfo, setSessionInfo] = useState<{ sessionId: string; termId: string } | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AssignmentForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
   const [activeAssignment, setActiveAssignment] = useState<any>(null);
@@ -57,7 +59,44 @@ export const Assignments = () => {
     }).catch(() => {});
   }, []);
 
-  const openCreate = () => { setForm(emptyForm); setFormError(null); setModalOpen(true); };
+  const openCreate = () => { setEditingId(null); setForm(emptyForm); setFormError(null); setModalOpen(true); };
+
+  const openEdit = (a: Assignment) => {
+    setEditingId(a.id);
+    setForm({
+      title: a.title,
+      description: a.description || "",
+      type: a.type,
+      maxScore: String(a.maxScore),
+      dueDate: a.dueDate?.slice(0, 10) || "",
+      subjectId: a.subjectId,
+      classArmId: a.classArmId,
+    });
+    setFormError(null);
+    setModalOpen(true);
+  };
+
+  const handlePublishToggle = async (a: Assignment) => {
+    setActionId(a.id);
+    try {
+      if (a.isPublished) await assignmentApi.unpublish(a.id);
+      else await assignmentApi.publish(a.id);
+      load();
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleDelete = async (a: Assignment) => {
+    if (!confirm(`Delete "${a.title}"? This can't be undone.`)) return;
+    setActionId(a.id);
+    try {
+      await assignmentApi.delete(a.id);
+      load();
+    } finally {
+      setActionId(null);
+    }
+  };
 
   const openSubmissions = async (assignmentId: string) => {
     const res = await assignmentApi.getById(assignmentId);
@@ -97,16 +136,23 @@ export const Assignments = () => {
     setSaving(true);
     setFormError(null);
     try {
-      await assignmentApi.create({
-        ...form,
-        maxScore: Number(form.maxScore),
-        sessionId: sessionInfo.sessionId,
-        termId: sessionInfo.termId,
-      });
+      if (editingId) {
+        await assignmentApi.update(editingId, {
+          ...form,
+          maxScore: Number(form.maxScore),
+        });
+      } else {
+        await assignmentApi.create({
+          ...form,
+          maxScore: Number(form.maxScore),
+          sessionId: sessionInfo.sessionId,
+          termId: sessionInfo.termId,
+        });
+      }
       setModalOpen(false);
       load();
     } catch (err: any) {
-      setFormError(err?.message || "Couldn't create assignment.");
+      setFormError(err?.message || `Couldn't ${editingId ? "update" : "create"} assignment.`);
     } finally {
       setSaving(false);
     }
@@ -117,7 +163,10 @@ export const Assignments = () => {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-serif font-semibold text-primary-900 dark:text-white">Assignments</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Homework, classwork, and projects</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Homework, classwork, and projects
+            {isTeacher() && !isAdmin() && " · New assignments are sent to admin for review before students see them"}
+          </p>
         </div>
         {isTeacher() && (
           <button onClick={openCreate} className="btn-primary flex items-center gap-2 self-start">
@@ -152,14 +201,50 @@ export const Assignments = () => {
                     <p className="text-xs text-gray-500 dark:text-gray-400">{a.subject?.name} · {a.type}</p>
                   </div>
                 </div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Due {formatDate(a.dueDate)}</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Due {formatDate(a.dueDate)}</span>
+                  {isTeacher() && (
+                    a.isPublished ? (
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3 h-3" /> Published
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                        <Clock className="w-3 h-3" /> Pending review
+                      </span>
+                    )
+                  )}
+                </div>
               </div>
               {a.description && <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">{a.description}</p>}
-              <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center justify-between mt-3 gap-2 flex-wrap">
                 <p className="text-xs text-gray-500 dark:text-gray-400">{a._count?.submissions ?? 0} submission{(a._count?.submissions ?? 0) === 1 ? "" : "s"} · Max score {a.maxScore}</p>
-                {isTeacher() && (
-                  <button onClick={() => openSubmissions(a.id)} className="btn-secondary text-xs py-1">View Submissions</button>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isTeacher() && (
+                    <button onClick={() => openSubmissions(a.id)} className="btn-secondary text-xs py-1">View Submissions</button>
+                  )}
+                  {isAdmin() && (
+                    <>
+                      <button onClick={() => openEdit(a)} className="btn-secondary text-xs py-1 flex items-center gap-1" title="Edit">
+                        <Pencil className="w-3 h-3" /> Edit
+                      </button>
+                      <button
+                        onClick={() => handlePublishToggle(a)}
+                        disabled={actionId === a.id}
+                        className="btn-secondary text-xs py-1 flex items-center gap-1"
+                      >
+                        {a.isPublished ? <><Undo2 className="w-3 h-3" /> Unpublish</> : <><Send className="w-3 h-3" /> Publish</>}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(a)}
+                        disabled={actionId === a.id}
+                        className="text-xs py-1 px-2 rounded-md flex items-center gap-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -169,12 +254,14 @@ export const Assignments = () => {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="New Assignment"
+        title={editingId ? "Edit Assignment" : "New Assignment"}
         size="lg"
         footer={
           <div className="flex justify-end gap-3">
             <button onClick={() => setModalOpen(false)} className="btn-secondary">Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="btn-primary">{saving ? "Creating..." : "Create Assignment"}</button>
+            <button onClick={handleSave} disabled={saving} className="btn-primary">
+              {saving ? "Saving..." : editingId ? "Save Changes" : "Submit for Review"}
+            </button>
           </div>
         }
       >

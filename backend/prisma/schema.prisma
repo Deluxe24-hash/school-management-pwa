@@ -631,6 +631,10 @@ model Assignment {
 
   submissions Submission[]
 
+  isPublished Boolean  @default(false)
+  publishedAt DateTime?
+  publishedBy String?
+
   @@map("assignments")
 }
 
