@@ -9,6 +9,7 @@ export const getAssignments = async (req: Request, res: Response) => {
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const role = req.user!.role;
     const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role);
+    const isTeacherTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"].includes(role);
 
     const where: any = {};
     if (classArmId) where.classArmId = classArmId as string;
@@ -17,9 +18,15 @@ export const getAssignments = async (req: Request, res: Response) => {
     if (sessionId) where.sessionId = sessionId as string;
     if (termId) where.termId = termId as string;
 
-    // Parents, students, and non-admin teachers only ever see assignments the admin has published.
-    // Admin/Principal see everything, including drafts pending their review.
-    if (!isAdminTier) where.isPublished = true;
+    // Only parents and students are restricted to published assignments.
+    // Teachers must see their own submissions (pending or published), and admins see everything.
+    if (!isTeacherTier) where.isPublished = true;
+
+    // Plain teachers (not admin/principal) only see their own submissions — not every
+    // other teacher's pending drafts. Admin tier can see everyone's, filtered by ?teacherId if given.
+    if (isTeacherTier && !isAdminTier && !teacherId) {
+      where.teacherId = req.user!.teacher?.id;
+    }
 
     // Parents may only see assignments for classes their own children are actually in.
     if (role === "PARENT") {
@@ -147,6 +154,17 @@ export const updateAssignment = async (req: Request, res: Response) => {
 
 export const deleteAssignment = async (req: Request, res: Response) => {
   try {
+    const role = req.user!.role;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role);
+
+    if (!isAdminTier) {
+      const existing = await prisma.assignment.findUnique({ where: { id: req.params.id }, select: { teacherId: true } });
+      if (!existing) return errorResponse(res, "Assignment not found", 404);
+      if (existing.teacherId !== req.user!.teacher?.id) {
+        return errorResponse(res, "You can only delete your own assignments", 403);
+      }
+    }
+
     const assignment = await prisma.assignment.delete({ where: { id: req.params.id } });
     await logAudit("DELETE", "assignments", req.params.id, req.user!.id, assignment, null, req.ip, req.get("user-agent"));
     return successResponse(res, null, "Assignment deleted");

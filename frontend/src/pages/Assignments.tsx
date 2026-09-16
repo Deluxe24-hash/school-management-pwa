@@ -15,7 +15,7 @@ interface AssignmentForm {
 const emptyForm: AssignmentForm = { title: "", description: "", type: "HOMEWORK", maxScore: "100", dueDate: "", subjectId: "", classArmId: "" };
 
 export const Assignments = () => {
-  const { isTeacher, isAdmin } = useAuth();
+  const { isTeacher, isAdmin, user } = useAuth();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [classArms, setClassArms] = useState<ClassArm[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -222,6 +222,15 @@ export const Assignments = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   {isTeacher() && (
                     <button onClick={() => openSubmissions(a.id)} className="btn-secondary text-xs py-1">View Submissions</button>
+                  )}
+                  {isTeacher() && !isAdmin() && a.teacherId === user?.teacher?.id && (
+                    <button
+                      onClick={() => handleDelete(a)}
+                      disabled={actionId === a.id}
+                      className="text-xs py-1 px-2 rounded-md flex items-center gap-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 className="w-3 h-3" /> Delete
+                    </button>
                   )}
                   {isAdmin() && (
                     <>
