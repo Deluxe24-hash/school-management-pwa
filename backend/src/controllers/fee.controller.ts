@@ -79,10 +79,11 @@ export const getFeeBatches = async (req: Request, res: Response) => {
     if (sessionId) where.sessionId = sessionId as string;
     if (termId) where.termId = termId as string;
 
-    const fees = await prisma.fee.findMany({
-      where,
-      include: { feeItem: true, student: { include: { classArm: { include: { class: true } } } } },
-    });
+    const [fees, classArms] = await Promise.all([
+      prisma.fee.findMany({ where, include: { feeItem: true } }),
+      prisma.classArm.findMany(),
+    ]);
+    const classArmNames = new Map(classArms.map((a) => [a.id, a.fullName]));
 
     // Group individual per-student fee rows back into the batch the admin assigned
     // them as (same fee item + class + term), so publish/unpublish acts on the whole batch.
@@ -94,7 +95,7 @@ export const getFeeBatches = async (req: Request, res: Response) => {
           feeItemId: f.feeItemId,
           feeItemName: f.feeItem.name,
           classArmId: f.classArmId,
-          className: f.student?.classArm?.class ? `${f.student.classArm.class.name} ${f.student.classArm.name}` : "",
+          className: classArmNames.get(f.classArmId) || "",
           termId: f.termId,
           sessionId: f.sessionId,
           amount: f.amount,
