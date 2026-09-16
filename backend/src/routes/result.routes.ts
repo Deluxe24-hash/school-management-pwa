@@ -4,7 +4,7 @@ import { authenticate, authorizeTeacher, authorizeAdmin } from "../middleware/rb
 
 const router = Router();
 
-router.get("/", authenticate, getResults);
+router.get("/", authenticate, authorizeTeacher, getResults);
 router.get("/student/:studentId", authenticate, getStudentResults);
 router.post("/enter", authenticate, authorizeTeacher, enterResult);
 router.post("/lock", authenticate, authorizeAdmin, lockResults);

@@ -39,7 +39,11 @@ export const getStudents = async (req: Request, res: Response) => {
       ];
     }
     if (gender) where.gender = gender;
-    if (status) where.academicStatus = status;
+    // Default to active students only — a "deleted" student is soft-withdrawn (kept for
+    // transcript history), so without this the list never actually loses them. Pass
+    // ?status=WITHDRAWN or ?status=ALL explicitly to see withdrawn/every student.
+    if (status && status !== "ALL") where.academicStatus = status;
+    else if (!status) where.academicStatus = { not: "WITHDRAWN" };
     if (classArmId) {
       where.enrollments = { some: { classArmId: classArmId as string } };
     }
@@ -189,9 +193,27 @@ export const updateStudent = async (req: Request, res: Response) => {
       include: { user: true, parent: true },
     });
 
+    // The edit form lets an admin reassign the student's class — persist that as an
+    // enrollment for the current session (this was previously silently dropped).
+    if (data.classArmId) {
+      const currentSession = await prisma.academicSession.findFirst({ where: { isCurrent: true } });
+      if (currentSession) {
+        await prisma.studentEnrollment.upsert({
+          where: { studentId_sessionId: { studentId: id, sessionId: currentSession.id } },
+          update: { classArmId: data.classArmId },
+          create: { studentId: id, classArmId: data.classArmId, sessionId: currentSession.id },
+        });
+      }
+    }
+
+    const withEnrollment = await prisma.student.findUnique({
+      where: { id },
+      include: { user: true, parent: true, enrollments: { include: { classArm: { include: { class: true } } }, orderBy: { enrolledAt: "desc" }, take: 1 } },
+    });
+
     await logAudit("UPDATE", "students", id, req.user!.id, existing, student, req.ip, req.get("user-agent"));
 
-    return successResponse(res, student, "Student updated successfully");
+    return successResponse(res, withEnrollment, "Student updated successfully");
   } catch (error) {
     throw error;
   }

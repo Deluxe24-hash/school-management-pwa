@@ -41,6 +41,37 @@ export const getStudentResults = async (req: Request, res: Response) => {
   try {
     const { studentId } = req.params;
     const { sessionId, termId } = req.query;
+    const role = req.user!.role;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role);
+
+    if (role === "STUDENT" && req.user!.student?.id !== studentId) {
+      return errorResponse(res, "You can only view your own results.", 403);
+    }
+    if (role === "PARENT") {
+      const parent = await prisma.parent.findUnique({
+        where: { id: req.user!.parent?.id },
+        select: { children: { select: { id: true } } },
+      });
+      const allowedIds = new Set((parent?.children || []).map((c) => c.id));
+      if (!allowedIds.has(studentId)) {
+        return errorResponse(res, "You can only view results for your own children.", 403);
+      }
+    }
+
+    // Parents and students only ever see results once admin has published the report card
+    // for that term — raw scores, however "final" they look, aren't visible before that.
+    if ((role === "PARENT" || role === "STUDENT") && sessionId && termId) {
+      const reportCard = await prisma.reportCard.findUnique({
+        where: { studentId_sessionId_termId: { studentId, sessionId: sessionId as string, termId: termId as string } },
+      });
+      if (!reportCard?.isPublished) {
+        return successResponse(res, { results: [], summary: { totalSubjects: 0, totalScore: 0, average: 0 }, published: false });
+      }
+    } else if (role === "PARENT" || role === "STUDENT") {
+      // No specific term given — restricted roles must specify one; otherwise this would
+      // leak results across every unpublished term at once.
+      return errorResponse(res, "sessionId and termId are required.", 400);
+    }
 
     const where: any = { studentId };
     if (sessionId) where.sessionId = sessionId as string;

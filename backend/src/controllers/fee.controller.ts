@@ -72,6 +72,75 @@ export const createFee = async (req: Request, res: Response) => {
   } catch (error) { throw error; }
 };
 
+export const getFeeBatches = async (req: Request, res: Response) => {
+  try {
+    const { sessionId, termId } = req.query;
+    const where: any = {};
+    if (sessionId) where.sessionId = sessionId as string;
+    if (termId) where.termId = termId as string;
+
+    const fees = await prisma.fee.findMany({
+      where,
+      include: { feeItem: true, student: { include: { classArm: { include: { class: true } } } } },
+    });
+
+    // Group individual per-student fee rows back into the batch the admin assigned
+    // them as (same fee item + class + term), so publish/unpublish acts on the whole batch.
+    const batches = new Map<string, any>();
+    for (const f of fees) {
+      const key = `${f.feeItemId}::${f.classArmId}::${f.termId}::${f.sessionId}::${f.isPublished}`;
+      if (!batches.has(key)) {
+        batches.set(key, {
+          feeItemId: f.feeItemId,
+          feeItemName: f.feeItem.name,
+          classArmId: f.classArmId,
+          className: f.student?.classArm?.class ? `${f.student.classArm.class.name} ${f.student.classArm.name}` : "",
+          termId: f.termId,
+          sessionId: f.sessionId,
+          amount: f.amount,
+          studentCount: 0,
+          isPublished: f.isPublished,
+          publishedAt: f.publishedAt,
+          createdAt: f.createdAt,
+        });
+      }
+      batches.get(key).studentCount += 1;
+    }
+
+    return successResponse(res, Array.from(batches.values()).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
+  } catch (error) { throw error; }
+};
+
+export const publishFeeBatch = async (req: Request, res: Response) => {
+  try {
+    const { feeItemId, classArmId, termId, sessionId } = req.body;
+    if (!feeItemId || !classArmId || !termId || !sessionId) {
+      return errorResponse(res, "feeItemId, classArmId, termId, and sessionId are required", 400);
+    }
+    const result = await prisma.fee.updateMany({
+      where: { feeItemId, classArmId, termId, sessionId },
+      data: { isPublished: true, publishedAt: new Date(), publishedBy: req.user!.id },
+    });
+    await logAudit("PUBLISH", "fees", null, req.user!.id, null, { feeItemId, classArmId, termId, count: result.count }, req.ip, req.get("user-agent"));
+    return successResponse(res, result, `Published to parents for ${result.count} student(s).`);
+  } catch (error) { throw error; }
+};
+
+export const unpublishFeeBatch = async (req: Request, res: Response) => {
+  try {
+    const { feeItemId, classArmId, termId, sessionId } = req.body;
+    if (!feeItemId || !classArmId || !termId || !sessionId) {
+      return errorResponse(res, "feeItemId, classArmId, termId, and sessionId are required", 400);
+    }
+    const result = await prisma.fee.updateMany({
+      where: { feeItemId, classArmId, termId, sessionId },
+      data: { isPublished: false, publishedAt: null, publishedBy: null },
+    });
+    await logAudit("UNPUBLISH", "fees", null, req.user!.id, null, { feeItemId, classArmId, termId, count: result.count }, req.ip, req.get("user-agent"));
+    return successResponse(res, result, "Unpublished from parents.");
+  } catch (error) { throw error; }
+};
+
 export const getStudentFees = async (req: Request, res: Response) => {
   try {
     const { studentId } = req.params;
@@ -96,6 +165,7 @@ export const getStudentFees = async (req: Request, res: Response) => {
     const where: any = { studentId };
     if (sessionId) where.sessionId = sessionId as string;
     if (termId) where.termId = termId as string;
+    if (role === "STUDENT" || role === "PARENT") where.isPublished = true;
 
     const fees = await prisma.fee.findMany({
       where,

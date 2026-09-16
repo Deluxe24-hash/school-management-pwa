@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Receipt, Eye, Check, X } from "lucide-react";
+import { Plus, Receipt, Eye, Check, X, Send, Undo2 } from "lucide-react";
 import { feeApi, paymentApi, classApi, sessionApi, studentApi } from "../services/api";
 import { FeeItem, ClassArm, Payment } from "../types";
 import { useAuth } from "../hooks/useAuth";
@@ -9,7 +9,7 @@ import { Modal } from "../components/Modal";
 import { formatCurrency, formatDate, getStatusColor, cn } from "../utils/helpers";
 import { ParentFees } from "./ParentFees";
 
-type Tab = "items" | "assign" | "payments";
+type Tab = "items" | "assign" | "batches" | "payments";
 
 export const Fees = () => {
   const { isParent, isStudent } = useAuth();
@@ -18,7 +18,7 @@ export const Fees = () => {
 };
 
 const AdminFees = () => {
-  const { isFinance } = useAuth();
+  const { isFinance, isAdmin } = useAuth();
   const [tab, setTab] = useState<Tab>("items");
 
   const [items, setItems] = useState<FeeItem[]>([]);
@@ -36,6 +36,10 @@ const AdminFees = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
+
+  const [batches, setBatches] = useState<any[]>([]);
+  const [batchesLoading, setBatchesLoading] = useState(true);
+  const [batchActionKey, setBatchActionKey] = useState<string | null>(null);
 
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [activePayment, setActivePayment] = useState<any>(null);
@@ -69,6 +73,26 @@ const AdminFees = () => {
   const loadPayments = () => {
     setPaymentsLoading(true);
     paymentApi.getAll({ limit: 50, status: statusFilter || undefined }).then((res) => setPayments(res.data.data.payments)).finally(() => setPaymentsLoading(false));
+  };
+
+  const loadBatches = useCallback(() => {
+    setBatchesLoading(true);
+    feeApi.getBatches().then((res) => setBatches(res.data.data)).finally(() => setBatchesLoading(false));
+  }, []);
+
+  useEffect(() => { if (tab === "batches") loadBatches(); }, [tab, loadBatches]);
+
+  const handleBatchPublishToggle = async (b: any) => {
+    const key = `${b.feeItemId}::${b.classArmId}::${b.termId}::${b.sessionId}::${b.isPublished}`;
+    setBatchActionKey(key);
+    try {
+      const payload = { feeItemId: b.feeItemId, classArmId: b.classArmId, termId: b.termId, sessionId: b.sessionId };
+      if (b.isPublished) await feeApi.unpublishBatch(payload);
+      else await feeApi.publishBatch(payload);
+      loadBatches();
+    } finally {
+      setBatchActionKey(null);
+    }
   };
 
   const openReceipt = async (paymentId: string) => {
@@ -121,7 +145,7 @@ const AdminFees = () => {
         sessionId: sessionInfo.sessionId,
         termId: sessionInfo.termId,
       });
-      setAssignMsg(`Fee assigned to ${studentIds.length} student(s).`);
+      setAssignMsg(`Fee assigned to ${studentIds.length} student(s). Go to "Assigned Fees" to publish it to parents.`);
     } catch (err: any) {
       setAssignMsg(err?.message || "Couldn't assign fee.");
     } finally {
@@ -132,6 +156,7 @@ const AdminFees = () => {
   const tabs: { id: Tab; label: string }[] = [
     { id: "items", label: "Fee Items" },
     { id: "assign", label: "Assign Fees" },
+    { id: "batches", label: "Assigned Fees" },
     { id: "payments", label: "Payments" },
   ];
 
@@ -213,6 +238,60 @@ const AdminFees = () => {
           <button onClick={handleAssign} disabled={assignSaving} className="btn-primary">
             {assignSaving ? "Assigning..." : "Assign to Class"}
           </button>
+        </div>
+      )}
+
+      {tab === "batches" && (
+        <div className="space-y-4">
+          {batchesLoading ? (
+            <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>
+          ) : batches.length === 0 ? (
+            <div className="card"><EmptyState title="No fees assigned yet" description="Assign a fee to a class first, then publish it here so parents can see and pay it." /></div>
+          ) : (
+            <div className="card p-0 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-800 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-3 font-medium">Fee Item</th>
+                    <th className="px-4 py-3 font-medium">Class</th>
+                    <th className="px-4 py-3 font-medium">Amount</th>
+                    <th className="px-4 py-3 font-medium">Students</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {batches.map((b) => {
+                    const key = `${b.feeItemId}::${b.classArmId}::${b.termId}::${b.sessionId}::${b.isPublished}`;
+                    return (
+                      <tr key={key}>
+                        <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{b.feeItemName}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{b.className}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{formatCurrency(b.amount)}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{b.studentCount}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn("px-2 py-0.5 rounded text-xs font-medium", b.isPublished ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300")}>
+                            {b.isPublished ? "Published" : "Not published"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {isAdmin() && (
+                            <button
+                              onClick={() => handleBatchPublishToggle(b)}
+                              disabled={batchActionKey === key}
+                              className="btn-secondary text-xs py-1 flex items-center gap-1 ml-auto"
+                            >
+                              {b.isPublished ? <><Undo2 className="w-3 h-3" /> Unpublish</> : <><Send className="w-3 h-3" /> Publish</>}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

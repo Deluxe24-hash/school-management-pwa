@@ -129,6 +129,9 @@ export const feeApi = {
   createItem: (data: any) => api.post("/fees/items", data),
   getAll: (params?: any) => api.get("/fees", { params }),
   create: (data: any) => api.post("/fees", data),
+  getBatches: (params?: any) => api.get("/fees/batches", { params }),
+  publishBatch: (data: any) => api.post("/fees/publish", data),
+  unpublishBatch: (data: any) => api.post("/fees/unpublish", data),
   getStudentFees: (studentId: string, params?: any) =>
     api.get(`/fees/student/${studentId}`, { params }),
 };
