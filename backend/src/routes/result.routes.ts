@@ -7,8 +7,8 @@ const router = Router();
 router.get("/", authenticate, authorizeTeacher, getResults);
 router.get("/student/:studentId", authenticate, getStudentResults);
 router.post("/enter", authenticate, authorizeTeacher, enterResult);
-router.post("/lock", authenticate, authorizeAdmin, lockResults);
-router.post("/unlock", authenticate, authorizeAdmin, unlockResults);
+router.post("/lock", authenticate, authorizeTeacher, lockResults);
+router.post("/unlock", authenticate, authorizeTeacher, unlockResults);
 router.post("/process", authenticate, authorizeAdmin, processResults);
 
 export default router;

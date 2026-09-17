@@ -8,6 +8,15 @@ export const generateReportCard = async (req: Request, res: Response) => {
   try {
     const { studentId, classArmId, sessionId, termId } = req.body;
 
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(req.user!.role);
+    const requesterTeacherId = req.user!.teacher?.id;
+    if (!isAdminTier) {
+      const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
+      if (classArm?.classTeacherId !== requesterTeacherId) {
+        return errorResponse(res, "Only this class's form teacher can generate its report cards.", 403);
+      }
+    }
+
     const results = await prisma.result.findMany({
       where: { studentId, sessionId, termId },
     });
@@ -68,7 +77,8 @@ export const getReportCard = async (req: Request, res: Response) => {
     let { studentId } = req.query;
     const { sessionId, termId } = req.query;
     const role = req.user!.role;
-    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL", "HEAD_TEACHER", "TEACHER"].includes(role);
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role);
+    const requesterTeacherId = req.user!.teacher?.id;
 
     // Students can only ever view their own report card.
     if (role === "STUDENT") {
@@ -88,6 +98,20 @@ export const getReportCard = async (req: Request, res: Response) => {
       }
     }
 
+    // A teacher may only view report cards for their own form class — not the whole school,
+    // and not just because they teach one subject there.
+    if (!isAdminTier && requesterTeacherId) {
+      const student = await prisma.student.findUnique({
+        where: { id: studentId as string },
+        include: { enrollments: { orderBy: { enrolledAt: "desc" }, take: 1 } },
+      });
+      const currentArmId = student?.enrollments?.[0]?.classArmId;
+      const classArm = currentArmId ? await prisma.classArm.findUnique({ where: { id: currentArmId } }) : null;
+      if (classArm?.classTeacherId !== requesterTeacherId) {
+        return errorResponse(res, "You can only view report cards for your own class.", 403);
+      }
+    }
+
     const reportCard = await prisma.reportCard.findUnique({
       where: {
         studentId_sessionId_termId: {
@@ -100,7 +124,9 @@ export const getReportCard = async (req: Request, res: Response) => {
     if (!reportCard) return errorResponse(res, "No report card generated yet for this term.", 404);
 
     // Parents and students may only see a report card once it's been published by an admin.
-    if (!isAdminTier && !reportCard.isPublished) {
+    // A teacher reaching this point already owns the class (checked above), so they can see
+    // their own draft before it's published — that's how they review it before submitting.
+    if (!isAdminTier && !requesterTeacherId && !reportCard.isPublished) {
       return errorResponse(res, "This report card hasn't been published yet.", 403);
     }
 

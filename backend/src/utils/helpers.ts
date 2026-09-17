@@ -22,3 +22,31 @@ export const calculateGrade = (
   }
   return { grade: "F", remark: "Fail", gradePoint: 0 };
 };
+
+// Computes what a teacher is actually scoped to see/manage, distinguishing form
+// (homeroom) teacher duties from subject-teacher duties. Used across students, classes,
+// subjects, results, and report cards so a teacher only sees their own remit.
+export const getTeacherScope = async (prisma: any, teacherId: string) => {
+  const [formClassArms, classSubjects] = await Promise.all([
+    prisma.classArm.findMany({ where: { classTeacherId: teacherId }, select: { id: true, classId: true } }),
+    prisma.classSubject.findMany({ where: { teacherId }, select: { classId: true, subjectId: true } }),
+  ]);
+
+  const formClassArmIds: string[] = formClassArms.map((a: any) => a.id);
+  const subjectIds: string[] = [...new Set(classSubjects.map((cs: any) => cs.subjectId))] as string[];
+  const subjectClassIds: string[] = [...new Set(classSubjects.map((cs: any) => cs.classId))] as string[];
+
+  const subjectClassArms = subjectClassIds.length
+    ? await prisma.classArm.findMany({ where: { classId: { in: subjectClassIds } }, select: { id: true, classId: true } })
+    : [];
+  const subjectClassArmIds: string[] = subjectClassArms.map((a: any) => a.id);
+
+  return {
+    formClassArmIds,
+    subjectIds,
+    subjectClassIds,
+    subjectClassArmIds,
+    allClassArmIds: [...new Set([...formClassArmIds, ...subjectClassArmIds])],
+    classSubjects, // raw {classId, subjectId} pairs, for exact per-class subject checks
+  };
+};

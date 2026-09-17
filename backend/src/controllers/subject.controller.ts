@@ -2,10 +2,22 @@ import { Request, Response } from "express";
 import prisma from "../config/database";
 import { successResponse, errorResponse } from "../utils/response";
 import { logAudit } from "../services/audit.service";
+import { getTeacherScope } from "../utils/helpers";
 
 export const getSubjects = async (req: Request, res: Response) => {
   try {
+    const role = req.user!.role;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role);
+    const requesterTeacherId = req.user!.teacher?.id;
+
+    const where: any = {};
+    if (!isAdminTier && requesterTeacherId) {
+      const scope = await getTeacherScope(prisma, requesterTeacherId);
+      where.id = { in: scope.subjectIds };
+    }
+
     const subjects = await prisma.subject.findMany({
+      where,
       include: {
         classSubjects: { include: { class: true, teacher: true } },
         _count: { select: { results: true, assignments: true } },

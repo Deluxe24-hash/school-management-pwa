@@ -100,6 +100,22 @@ export const createAssignment = async (req: Request, res: Response) => {
   try {
     const { title, description, instructions, type, maxScore, dueDate, attachmentUrl, subjectId, classArmId, sessionId, termId } = req.body;
     let teacherId = req.user!.teacher?.id;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(req.user!.role);
+
+    // A plain teacher may only create assignments for a class/subject they're actually
+    // scoped to: their own form class (any subject), or a class where they teach this subject.
+    if (teacherId && !isAdminTier) {
+      const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
+      const isFormTeacher = classArm?.classTeacherId === teacherId;
+      if (!isFormTeacher) {
+        const assigned = await prisma.classSubject.findFirst({
+          where: { classId: classArm?.classId, subjectId, teacherId },
+        });
+        if (!assigned) {
+          return errorResponse(res, "You're not assigned to teach this subject for this class.", 403);
+        }
+      }
+    }
 
     if (!teacherId) {
       if (req.user!.role !== "ADMIN" && req.user!.role !== "SUPER_ADMIN" && req.user!.role !== "PRINCIPAL") {

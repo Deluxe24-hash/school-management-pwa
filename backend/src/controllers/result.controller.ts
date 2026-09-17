@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../config/database";
 import { successResponse, errorResponse } from "../utils/response";
 import { logAudit } from "../services/audit.service";
-import { calculateGrade } from "../utils/helpers";
+import { calculateGrade, getTeacherScope } from "../utils/helpers";
 
 export const getResults = async (req: Request, res: Response) => {
   try {
@@ -15,6 +15,37 @@ export const getResults = async (req: Request, res: Response) => {
     if (subjectId) where.subjectId = subjectId as string;
     if (sessionId) where.sessionId = sessionId as string;
     if (termId) where.termId = termId as string;
+
+    // A subject teacher only sees results for their own class+subject; a form teacher sees
+    // every subject's results for their own class (so they can review/edit before submitting).
+    const role = req.user!.role;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role);
+    const requesterTeacherId = req.user!.teacher?.id;
+    if (!isAdminTier && requesterTeacherId) {
+      const scope = await getTeacherScope(prisma, requesterTeacherId);
+      const isFormTeacherOfClass = classArmId && scope.formClassArmIds.includes(classArmId as string);
+
+      if (isFormTeacherOfClass) {
+        // Full access to every subject for their own class — no further restriction needed.
+      } else if (classArmId) {
+        // Not the form teacher here — restrict to subjects they're assigned to teach in this class.
+        const classArm = await prisma.classArm.findUnique({ where: { id: classArmId as string }, select: { classId: true } });
+        const allowedSubjectIds = scope.classSubjects
+          .filter((cs: any) => cs.classId === classArm?.classId)
+          .map((cs: any) => cs.subjectId);
+        if (subjectId && !allowedSubjectIds.includes(subjectId as string)) {
+          return successResponse(res, { results: [], total: 0 });
+        }
+        where.subjectId = subjectId ? (subjectId as string) : { in: allowedSubjectIds };
+      } else {
+        // No class specified at all — restrict broadly to their own scope so a teacher can't
+        // page through every result in the school.
+        where.classArmId = { in: scope.allClassArmIds };
+        if (subjectId && !scope.subjectIds.includes(subjectId as string)) {
+          return successResponse(res, { results: [], total: 0 });
+        }
+      }
+    }
 
     const [results, total] = await Promise.all([
       prisma.result.findMany({
@@ -199,18 +230,34 @@ export const enterResult = async (req: Request, res: Response) => {
 export const lockResults = async (req: Request, res: Response) => {
   try {
     const { classArmId, sessionId, termId, subjectId } = req.body;
+    const role = req.user!.role;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role);
+    const requesterTeacherId = req.user!.teacher?.id;
+
+    if (!isAdminTier) {
+      const classArm = await prisma.classArm.findUnique({ where: { id: classArmId } });
+      if (classArm?.classTeacherId !== requesterTeacherId) {
+        return errorResponse(res, "Only this class's form teacher can submit results for admin review.", 403);
+      }
+    }
+
     const where: any = { classArmId, sessionId, termId };
     if (subjectId) where.subjectId = subjectId;
 
     await prisma.result.updateMany({ where, data: { isLocked: true } });
     await logAudit("LOCK", "results", null, req.user!.id, null, { classArmId, sessionId, termId }, req.ip, req.get("user-agent"));
-    return successResponse(res, null, "Results locked");
+    return successResponse(res, null, "Results submitted to admin");
   } catch (error) { throw error; }
 };
 
 export const unlockResults = async (req: Request, res: Response) => {
   try {
     const { classArmId, sessionId, termId, subjectId } = req.body;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(req.user!.role);
+    if (!isAdminTier) {
+      return errorResponse(res, "Only admin can unlock results.", 403);
+    }
+
     const where: any = { classArmId, sessionId, termId };
     if (subjectId) where.subjectId = subjectId;
 

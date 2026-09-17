@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { successResponse, errorResponse } from "../utils/response";
 import { logAudit } from "../services/audit.service";
-import { generateAdmissionNumber } from "../utils/helpers";
+import { generateAdmissionNumber, getTeacherScope } from "../utils/helpers";
 
 const studentSchema = z.object({
   body: z.object({
@@ -46,6 +46,22 @@ export const getStudents = async (req: Request, res: Response) => {
     else if (!status) where.academicStatus = { not: "WITHDRAWN" };
     if (classArmId) {
       where.enrollments = { some: { classArmId: classArmId as string } };
+    }
+
+    // A plain teacher (not admin/principal) only sees students in classes they're actually
+    // scoped to: their own form class, or classes where they teach an assigned subject.
+    const role = req.user!.role;
+    const isAdminTier = ["SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role);
+    const requesterTeacherId = req.user!.teacher?.id;
+    if (!isAdminTier && requesterTeacherId) {
+      const scope = await getTeacherScope(prisma, requesterTeacherId);
+      if (classArmId) {
+        if (!scope.allClassArmIds.includes(classArmId as string)) {
+          return successResponse(res, { students: [], total: 0, page: 1, totalPages: 0 });
+        }
+      } else {
+        where.enrollments = { some: { classArmId: { in: scope.allClassArmIds } } };
+      }
     }
 
     const [students, total] = await Promise.all([
