@@ -63,9 +63,18 @@ npm install
 npm run dev
 ```
 
-### Default Login
-- Email: `admin@school.com`
-- Password: `Admin@123`
+### Demo Data
+Running `npx prisma db seed` populates a full demo school ("Sunrise Model College") with real sample data across every role — students, parents, teachers, classes, assignments, fees, results, and report cards — so the app doesn't look empty on first login.
+
+| Role | Email | Password | Notes |
+|------|-------|----------|-------|
+| Super Admin | `admin@school.com` | `Admin@123` | Full access |
+| Form Teacher | `ifeoma.nwachukwu@school.com` | `Teacher@123` | Homeroom teacher of JSS 1A |
+| Subject Teacher | `tunde.bakare@school.com` | `Teacher@123` | Teaches Math & Physics in SS 1 |
+| Parent | `parent1@school.com` | `Parent@123` | Linked to a JSS 1A student |
+| Student | `student1@school.com` | `Student@123` | JSS 1A |
+
+**⚠️ Before selling or deploying:** run the seed against a fresh/demo database only — never your live production database, since it will create or upsert a `SchoolSetting` record named "Sunrise Model College" and inject demo students/parents/teachers. For a marketplace listing or client handoff, provision a separate Neon branch or database for demo purposes.
 
 ## API Endpoints
 
@@ -112,4 +121,4 @@ FRONTEND_URL=https://your-domain.com
 ```
 
 ## License
-MIT
+This is commercially licensed software — see [LICENSE.md](./LICENSE.md). It is not open source: you may deploy and customize it for a licensed site, but you may not resell or redistribute the source code itself.
